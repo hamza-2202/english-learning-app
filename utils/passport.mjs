@@ -1,7 +1,7 @@
 import GoogleStrategy from "passport-google-oauth20"
 import FacebookStrategy from "passport-facebook"
-import { User } from "../models/User.model.mjs";
 import passport from "passport";
+import { User } from "../models/user.model.mjs";
 
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
