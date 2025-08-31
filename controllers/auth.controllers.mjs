@@ -7,13 +7,13 @@ const register = asyncHandler(async (request, response) => {
 
     const { name, email, password, level } = request.body;
 
-    if( !name || !email || !password || !level ){
+    if (!name || !email || !password || !level) {
         response.status(400)
         throw new Error(`Input all fields`)
     }
 
     let user = await User.findOne({ email });
-    if (user){
+    if (user) {
         response.status(400)
         throw new Error(`User already exists`)
     }
@@ -31,7 +31,6 @@ const register = asyncHandler(async (request, response) => {
     response.status(201).json({
         message: `User registered successfully`,
         user: {
-            id: user._id,
             name,
             email,
             level
@@ -54,23 +53,34 @@ const login = asyncHandler(async (request, response) => {
         success: true,
         token,
         user: {
+            id: user._id,
             name: user.name,
             email: user.email,
             level: user.level,
             role: user.role
         }
         // user: { id: user._id, email: user.email, name: user.name, role: user.role },
-        })
+    })
 })
 
 const loginWithGoogle = (request, response) => {
-  const token = generateToken(request.user._id);
-  response.status(200).json({ token, user: request.user });
+    const token = generateToken(request.user._id);
+    response.status(200).json({
+        message: `User logged in successfully`,
+        success: true,
+        token,
+        user: request.user
+    });
 }
 
 const loginWithFacebook = (request, response) => {
-  const token = generateToken(request.user._id);
-  response.status(200).json({ token, user: request.user });
+    const token = generateToken(request.user._id);
+    response.status(200).json({
+        message: `User logged in successfully`,
+        success: true,
+        token,
+        user: request.user
+    });
 }
 
 const profile = asyncHandler(async (request, response) => {
