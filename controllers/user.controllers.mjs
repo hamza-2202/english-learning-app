@@ -1,5 +1,5 @@
 import asyncHandler from "express-async-handler";
-import { User } from "../models/user.model.mjs";
+import { User } from "../models/User.model.mjs";
 import bcrypt from "bcrypt"
 
 const createUser = asyncHandler( async (request, response) => {

@@ -1,0 +1,17 @@
+[33mcommit c58e4c805d6b5fdf8e85cd8b2610cfef0cce5ae8[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: hamza-2202 <hs22082002@gmail.com>
+Date:   Sun Aug 31 21:17:23 2025 +0500
+
+    rename user.model.mjs
+
+[33mcommit 01988bc0d020a32e1f5ef557b60922379e05aafd[m
+Author: hamza-2202 <hs22082002@gmail.com>
+Date:   Sun Aug 31 20:55:03 2025 +0500
+
+    modified auth controllers
+
+[33mcommit 9737dd81b87b0670209f3cffb457a596d627fef4[m
+Author: hamza-2202 <hs22082002@gmail.com>
+Date:   Sat Aug 30 21:23:31 2025 +0500
+
+    Initial commit of backend project

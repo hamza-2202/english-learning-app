@@ -1,6 +1,6 @@
 import asyncHandler from "express-async-handler"
 import jwt from "jsonwebtoken"
-import { User } from "../models/user.model.mjs"
+import { User } from "../models/User.model.mjs"
 
 
 export const verifyToken = asyncHandler(async (request, response, next) => {

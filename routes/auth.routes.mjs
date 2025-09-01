@@ -5,6 +5,8 @@ import {
     login,
     loginWithGoogle,
     loginWithFacebook,
+    forgotPassword,
+    resetPassword,
     profile
 } from "../controllers/auth.controllers.mjs"
 
@@ -22,6 +24,9 @@ router.get("/google/callback", passport.authenticate("google", { session: false 
 // Facebook Auth
 router.get("/facebook", passport.authenticate("facebook", { scope: ["email"] }));
 router.get("/facebook/callback", passport.authenticate("facebook", { session: false }), loginWithFacebook);
+
+router.post("/forgot-password", forgotPassword)
+router.post("/reset-password", resetPassword)
 
 
 router.get("/profile", profile)
