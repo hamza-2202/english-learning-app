@@ -43,8 +43,14 @@ const register = asyncHandler(async (request, response) => {
 const login = asyncHandler(async (request, response) => {
     const { email, password } = request.body;
 
-    const user = await User.findOne({ email, provider: 'email' });
+    const user = await User.findOne({ email });     // provider: 'email' 
+
     if (!user) return response.status(400).json({ message: 'Invalid credentials' });
+
+    if (user.provider !== 'email') {
+        response.status(400)
+        throw new Error(`This email is linked with ${user.provider} signup.`)
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return response.status(400).json({ message: 'Invalid credentials' });
@@ -67,22 +73,26 @@ const login = asyncHandler(async (request, response) => {
 
 const loginWithGoogle = (request, response) => {
     const token = generateToken(request.user._id);
-    response.status(200).json({
-        message: `User logged in successfully`,
-        success: true,
-        token,
-        user: request.user
-    });
+    // response.status(200).json({
+    //     message: `User logged in successfully`,
+    //     success: true,
+    //     token,
+    //     user: request.user
+    // });
+    const redirectUrl = `${process.env.FRONTEND_URL}/auth/callback?token=${token}`;
+    response.redirect(redirectUrl);
 }
 
 const loginWithFacebook = (request, response) => {
     const token = generateToken(request.user._id);
-    response.status(200).json({
-        message: `User logged in successfully`,
-        success: true,
-        token,
-        user: request.user
-    });
+    // response.status(200).json({
+    //     message: `User logged in successfully`,
+    //     success: true,
+    //     token,
+    //     user: request.user
+    // });
+    const redirectUrl = `${process.env.FRONTEND_URL}/auth/callback?token=${token}`;
+    response.redirect(redirectUrl);
 }
 
 const forgotPassword = asyncHandler(async (request, response) => {
@@ -112,13 +122,13 @@ const forgotPassword = asyncHandler(async (request, response) => {
     response.status(200).json({ message: 'Reset password email sent successfully' });
 })
 
-const resetPassword = asyncHandler( async (request, response) => {
+const resetPassword = asyncHandler(async (request, response) => {
     const { token, password } = request.body
 
-    const decoded = jwt.verify( token, process.env.JWT_RESET_SECRET )
+    const decoded = jwt.verify(token, process.env.JWT_RESET_SECRET)
 
     const user = await User.findOne(decoded.id)
-    if(!user || user.provider !== 'email'){
+    if (!user || user.provider !== 'email') {
         response.status(400)
         throw new Error(`Invalid or expired token`)
     }
@@ -132,9 +142,6 @@ const resetPassword = asyncHandler( async (request, response) => {
     })
 })
 
-const profile = asyncHandler(async (request, response) => {
-
-})
 
 export {
     register,
@@ -142,6 +149,5 @@ export {
     loginWithGoogle,
     loginWithFacebook,
     forgotPassword,
-    resetPassword,
-    profile
+    resetPassword
 }
