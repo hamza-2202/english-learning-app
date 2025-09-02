@@ -73,25 +73,15 @@ const login = asyncHandler(async (request, response) => {
 
 const loginWithGoogle = (request, response) => {
     const token = generateToken(request.user._id);
-    // response.status(200).json({
-    //     message: `User logged in successfully`,
-    //     success: true,
-    //     token,
-    //     user: request.user
-    // });
-    const redirectUrl = `${process.env.FRONTEND_URL}/auth/callback?token=${token}`;
+    const user = { id: request.user._id, email: request.user.email, name: request.user.name, role: request.user.role };
+    const redirectUrl = `${process.env.FRONTEND_URL}/auth/callback?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}`;
     response.redirect(redirectUrl);
 }
 
 const loginWithFacebook = (request, response) => {
     const token = generateToken(request.user._id);
-    // response.status(200).json({
-    //     message: `User logged in successfully`,
-    //     success: true,
-    //     token,
-    //     user: request.user
-    // });
-    const redirectUrl = `${process.env.FRONTEND_URL}/auth/callback?token=${token}`;
+    const user = { id: request.user._id, email: request.user.email, name: request.user.name, role: request.user.role };
+    const redirectUrl = `${process.env.FRONTEND_URL}/auth/callback?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}`;
     response.redirect(redirectUrl);
 }
 
