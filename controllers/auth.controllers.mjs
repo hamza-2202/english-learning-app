@@ -87,29 +87,35 @@ const loginWithFacebook = (request, response) => {
 
 const forgotPassword = asyncHandler(async (request, response) => {
     const { email } = request.body
-    const user = await User.findOne({ email })
-    if (!user) {
-        response.status(404)
-        throw new Error(`User not found or not registered with this email`)
-    }
-    const resetToken = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_RESET_SECRET, { expiresIn: '15m' })
+    try {
+        const user = await User.findOne({ email })
+        if (!user) {
+            response.status(404)
+            throw new Error(`User not found or not registered with this email`)
+        }
+        const resetToken = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_RESET_SECRET, { expiresIn: '15m' })
 
-    const resetURL = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`
+        const resetURL = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`
 
-    const mailOptions = {
-        from: process.env.EMAIL_USER,
-        to: user.email,
-        subject: 'Password Reset Request',
-        html: `
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: user.email,
+            subject: 'Password Reset Request',
+            html: `
         <h3>Password Reset</h3>
         <p>You requested a password reset for your account.</p>
         <p>Click <a href="${resetURL}">here</a> to reset your password.</p>
         <p>This link will expire in 1 hour.</p>
         <p>If you did not request this, please ignore this email.</p>
       `,
+        }
+        await transporter.sendMail(mailOptions);
+        response.status(200).json({ message: 'Reset password email sent successfully' });
+    } catch (error) {
+        console.error('Forgot password error:', error.message)
+        response.status(500).json({ message: 'Server error' })
     }
-    await transporter.sendMail(mailOptions);
-    response.status(200).json({ message: 'Reset password email sent successfully' });
+
 })
 
 const resetPassword = asyncHandler(async (request, response) => {

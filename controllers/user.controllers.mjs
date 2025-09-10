@@ -46,16 +46,24 @@ const updateUser = asyncHandler( async (request, response) => {
     const { name, email, password, level, role } = request.body
     const userExists = await User.findById(request.params.id)
 
+    if (email && email !== userExists.email) {
+        const emailExists = await User.findOne({ email });
+        if (emailExists) {
+            response.status(400);
+            throw new Error('This email is already in use');
+        }
+    }
+
     const userLevel = ["beginner", "intermediate", "advance"]
     if( level && !userLevel.includes(level) ){
         response.status(400)
-        throw new Error(`level "${level}" is not defined`)
+        throw new Error(`Level "${level}" is not defined`)
     }
 
     const userRole = ["student", "teacher"]
     if( role && !userRole.includes(role)){
         response.status(400)
-        throw new Error(`level "${role}" is not defined`)
+        throw new Error(`Role "${role}" is not defined`)
     }
 
     if(!userExists){
@@ -64,7 +72,7 @@ const updateUser = asyncHandler( async (request, response) => {
     }
 
     if(request.user.role.toString() !== 'admin' && request.user._id !== request.params.id){
-        response.status(401)
+        response.status(403)
         throw new Error(`Access denied. User not authorized.`)
     }
 
@@ -72,6 +80,10 @@ const updateUser = asyncHandler( async (request, response) => {
     if(password){
         const hashedPassword = await bcrypt.hash(password, 10)
         updatedData.password = hashedPassword;
+    }
+
+    if(level){
+        updatedData.level = level
     }
 
     if(role){

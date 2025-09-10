@@ -8,38 +8,36 @@ const lessonSchema = mongoose.Schema({
     },
     description: {
         type: String,
+        maxlength: 200,
         trim: true
     },
     level: {
         type: String,
         enum: ['beginner', 'intermediate', 'advanced'],
-        required: true
+        required: true,
+        trim: true
     },
-    category: [{
+    category: {
         type: String,
         required: true,
-        enum: ["grammar", "vocabulary", "listening", "writing", "speaking"],
+        enum: ["grammar", "vocabulary", "reading", "writing", "listening", "speaking"],
         trim: true
-    }],
-    content: [{
-        title: {
-            type: String,
-            required: true,
-            trim: true
-        },
-        type: {
-            type: String,
-            enum: ['video', 'audio', 'file'],
-            required: true
-        },
-        url: {
-            type: String,
-            required: true // URL to file in cloud storage (e.g., AWS S3)
-        }
-    }],
+    },
+    url: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    createdBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    }
 },
 {
     timestamps: true
 })
+
+lessonSchema.index({ level: 1 })
 
 export const Lesson = mongoose.model('Lesson', lessonSchema)
