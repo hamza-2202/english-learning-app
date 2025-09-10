@@ -2,6 +2,33 @@ import { Lesson } from "../models/lesson.model.mjs";
 import asyncHandler from "express-async-handler";
 
 
+const getAllLesson = asyncHandler( async (request, response) => {
+
+    const user = request.user
+
+    if(user.role === 'student'){
+        const lessons = await Lesson.find({ level: user.level })
+        if (lessons.length === 0){
+            response.status(404)
+            throw new Error(`Lessons not found`)
+        }
+        response.status(200).json({
+            count: lessons.length,
+            lessons
+        })
+    } else {
+        const lessons = await Lesson.find()
+        if (lessons.length === 0){
+            response.status(404)
+            throw new Error(`Lessons not found`)
+        }
+        response.status(200).json({
+            count: lessons.length,
+            lessons
+        })
+    }
+})
+
 const createLesson = asyncHandler(async (request, response) => {
     const { title, description, level, category, url } = request.body
     const user = request.user
@@ -70,6 +97,7 @@ const deleteLesson = asyncHandler( async (request, response) => {
 })
 
 export {
+    getAllLesson,
     createLesson,
     updateLesson,
     deleteLesson
