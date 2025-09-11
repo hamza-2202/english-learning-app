@@ -13,7 +13,7 @@ const lessonSchema = mongoose.Schema({
     },
     level: {
         type: String,
-        enum: ['beginner', 'intermediate', 'advanced'],
+        enum: ['beginner', 'intermediate', 'advance'],
         required: true,
         trim: true
     },
