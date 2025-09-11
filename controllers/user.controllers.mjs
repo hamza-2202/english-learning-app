@@ -4,13 +4,17 @@ import bcrypt from "bcrypt"
 
 const createUser = asyncHandler( async (request, response) => {
     const { name, email, role, password } = request.body
+    if( !name || !email || !role || !password ){
+        throw new Error(`Input all fields`)
+    }
 
     const userExists = await User.findOne({email})
     if(userExists){
         response.status(400)
         throw new Error(`User with this email already exists`)
     }
-    const user = await User.create({name, email, role, password})
+    const hashedPassword = await bcrypt.hash(password, 10)
+    const user = await User.create({name, email, role, password: hashedPassword})
     response.status(201).json({
         message: `User created successfully`,
         user
