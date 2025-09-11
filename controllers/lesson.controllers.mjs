@@ -16,7 +16,21 @@ const getAllLesson = asyncHandler( async (request, response) => {
             count: lessons.length,
             lessons
         })
-    } else {
+    } 
+    
+    if (user.role === 'teacher'){
+        const lessons = await Lesson.find({createdBy: user._id})
+        if (lessons.length === 0){
+            response.status(404)
+            throw new Error(`You have not created any lesson yet`)
+        }
+        response.status(200).json({
+            count: lessons.length,
+            lessons
+        })
+    }
+    
+    if (user.role === 'admin'){
         const lessons = await Lesson.find()
         if (lessons.length === 0){
             response.status(404)
