@@ -70,9 +70,14 @@ const updateAnnouncement = asyncHandler(async (request, response) => {
         response.status(404)
         throw new Error(`Announcement not found`)
     }
+    const allowedLevels = ['beginner', 'intermediate', 'advance']
+    if(!allowedLevels.includes(level)){
+        response.status(400)
+        throw new Error(`Invalid level value '${level}`)
+    }
 
     if (announcement.createdBy.toString() !== request.user._id.toString()) {
-        response.status(403)
+        response.status(401)
         throw new Error(`Unauthorized, you are not the author of this announcement`)
     }
 
@@ -91,7 +96,7 @@ const deleteAnnouncement = asyncHandler(async (request, response) => {
     }
 
     if (announcement.createdBy.toString() !== request.user._id.toString()) {
-        response.status(403)
+        response.status(401)
         throw new Error(`Unauthorized, you are not the author of this announcement`)
     }
 

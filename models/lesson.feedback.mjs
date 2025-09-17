@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose from "mongoose"
 
 const feedbackSchema = new mongoose.Schema({
     lesson: {
@@ -16,10 +16,6 @@ const feedbackSchema = new mongoose.Schema({
         required: true,
         trim: true,
         maxlength: 1000
-    },
-    postedAt: {
-        type: Date,
-        default: Date.now
     },
     replies: [{
         user: {
@@ -40,6 +36,10 @@ const feedbackSchema = new mongoose.Schema({
     }]
 }, {
     timestamps: true
-});
+})
+
+feedbackSchema.index({lesson: 1})
+feedbackSchema.index({user: 1})
+feedbackSchema.index({'replies.user': 1})
 
 export const Feedback = mongoose.model('Feedback', feedbackSchema)

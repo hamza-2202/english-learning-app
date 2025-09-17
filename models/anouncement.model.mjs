@@ -25,4 +25,6 @@ const announcementSchema = mongoose.Schema({
     timestamps: true
 })
 
+announcementSchema.index({createdBy: 1})
+
 export const Announcement = mongoose.model('Announcement', announcementSchema)
