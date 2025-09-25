@@ -8,7 +8,7 @@ export const roleMiddleware = (allowedRoles) => {
             next()
         } catch (err) {
             response.status(500).json({
-                message: `Internal server Error`,
+                message: `Internal server error`,
                 error: err.message
             })
         }

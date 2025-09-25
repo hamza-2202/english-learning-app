@@ -9,7 +9,7 @@ const getAllLesson = asyncHandler(async (request, response) => {
     if (user.role === 'student') {
         const lessons = await Lesson.find({ level: user.level }).populate({
             path: 'feedbacks',
-            select: 'content user replies',
+            select: 'content user replies createdAt',
             populate: [
                 { path: 'user', select: 'name role' },
                 { path: 'replies.user', select: 'name role' }
@@ -30,7 +30,7 @@ const getAllLesson = asyncHandler(async (request, response) => {
         const lessons = await Lesson.find({ createdBy: user._id })
             .populate({
                 path: 'feedbacks',
-                select: 'content user replies',
+                select: 'content user replies createdAt',
                 populate: [
                     { path: 'user', select: 'name role' },
                     { path: 'replies.user', select: 'name role' }
@@ -51,7 +51,7 @@ const getAllLesson = asyncHandler(async (request, response) => {
         const lessons = await Lesson.find()
             .populate({
                 path: 'feedbacks',
-                select: 'content user replies',
+                select: 'content user replies createdAt',
                 populate: [
                     { path: 'user', select: 'name role' },
                     { path: 'replies.user', select: 'name role' }
