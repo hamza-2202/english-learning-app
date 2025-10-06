@@ -7,7 +7,7 @@ import passport from "./utils/passport.mjs"
 import cors from "cors"
 
 const app = express()
-// const port = process.env.PORT
+const port = process.env.PORT
 connectDB()
 
 app.use(cors({ origin: '*' }))
@@ -24,7 +24,7 @@ app.get('/', (request, response) => {
   });
 });
 
-// app.listen(port, () => {
-//     console.log(`server is running at port: ${port}`);
-// })
-export default app
+app.listen(port, () => {
+    console.log(`server is running at port: ${port}`);
+})
+// export default app
