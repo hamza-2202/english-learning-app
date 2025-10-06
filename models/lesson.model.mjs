@@ -8,6 +8,7 @@ const lessonSchema = mongoose.Schema({
     },
     description: {
         type: String,
+        default: "",
         maxlength: 200,
         trim: true
     },

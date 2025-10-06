@@ -22,9 +22,4 @@ app.use(errorHandler)
 app.listen(port, () => {
     console.log(`server is running at port: ${port}`);
 })
-
-
-
-
-// how to create Google & Facebook credentials in their developer consoles and whitelist callback URLs
-
+// export default app

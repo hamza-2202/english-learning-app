@@ -110,8 +110,15 @@ const updateLesson = asyncHandler(async (request, response) => {
     const allowedLevels = ['beginner', 'intermediate', 'advance']
     if (!allowedLevels.includes(level)) {
         response.status(400)
-        throw new Error(`Invalid level value '${level}`)
+        throw new Error(`Level: ${level} is not a valid level value`)
     }
+
+    const allowedCategory = ['grammar', 'vocabulary', 'reading', 'writing', 'listening', 'speaking']
+    if (!allowedCategory.includes(category)) {
+        response.status(400)
+        throw new Error(`Category: ${category} is not valid a category value`)
+    }
+
 
     if (user.role === 'teacher' && lesson.createdBy.toString() !== user._id.toString()) {
         response.status(403)

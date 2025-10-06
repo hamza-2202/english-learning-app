@@ -93,7 +93,7 @@ const forgotPassword = asyncHandler(async (request, response) => {
             response.status(404)
             throw new Error(`User not found or not registered with this email`)
         }
-        const resetToken = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_RESET_SECRET, { expiresIn: '15m' })
+        const resetToken = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_RESET_SECRET, { expiresIn: '1h' })
 
         const resetURL = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`
 
@@ -123,7 +123,7 @@ const resetPassword = asyncHandler(async (request, response) => {
 
     const decoded = jwt.verify(token, process.env.JWT_RESET_SECRET)
 
-    const user = await User.findOne(decoded.id)
+    const user = await User.findById(decoded.id)
     if (!user || user.provider !== 'email') {
         response.status(400)
         throw new Error(`Invalid or expired token`)
