@@ -7,7 +7,7 @@ import passport from "./utils/passport.mjs"
 import cors from "cors"
 
 const app = express()
-const port = process.env.PORT
+// const port = process.env.PORT
 connectDB()
 
 app.use(cors({ origin: '*' }))
@@ -16,10 +16,15 @@ app.use(express.json())
 app.use(passport.initialize())
 app.use(routes)
 
-
 app.use(errorHandler)
 
-app.listen(port, () => {
-    console.log(`server is running at port: ${port}`);
-})
+app.get('/', (request, response) => {
+  response.status(200).json({ 
+    message: 'Server is running! Check /api or other routes for functionality.' 
+  });
+});
+
+// app.listen(port, () => {
+//     console.log(`server is running at port: ${port}`);
+// })
 export default app
