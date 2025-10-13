@@ -1,29 +1,33 @@
 import asyncHandler from "express-async-handler";
 import { User } from "../models/user.model.mjs";
 import bcrypt from "bcrypt"
+import { Progress } from "../models/progress.model.mjs";
+import { Feedback } from "../models/lesson.feedback.mjs";
+import { Submission } from "../models/assignment.submissions.model.mjs";
+import { QuizSubmission } from "../models/quizSubmission.model.mjs";
 
-const createUser = asyncHandler( async (request, response) => {
+const createUser = asyncHandler(async (request, response) => {
     const { name, email, role, password } = request.body
-    if( !name || !email || !role || !password ){
+    if (!name || !email || !role || !password) {
         throw new Error(`Input all fields`)
     }
 
-    const userExists = await User.findOne({email})
-    if(userExists){
+    const userExists = await User.findOne({ email })
+    if (userExists) {
         response.status(400)
         throw new Error(`User with this email already exists`)
     }
     const hashedPassword = await bcrypt.hash(password, 10)
-    const user = await User.create({name, email, role, password: hashedPassword})
+    const user = await User.create({ name, email, role, password: hashedPassword })
     response.status(201).json({
         message: `User created successfully`,
         user
     })
 })
 
-const getAllUsers = asyncHandler( async (request, response) => {
+const getAllUsers = asyncHandler(async (request, response) => {
     const users = await User.find().select('-password')
-    if(users.length === 0){
+    if (users.length === 0) {
         response.status(404)
         throw new Error(`Users not found`)
     }
@@ -34,9 +38,9 @@ const getAllUsers = asyncHandler( async (request, response) => {
     })
 })
 
-const getSingleUser = asyncHandler( async (request, response) => {
+const getSingleUser = asyncHandler(async (request, response) => {
     const user = await User.findById(request.params.id).select('-password')
-    if(!user){
+    if (!user) {
         response.status(404)
         throw new Error(`User not found`)
     }
@@ -45,78 +49,102 @@ const getSingleUser = asyncHandler( async (request, response) => {
     })
 })
 
-const updateUser = asyncHandler( async (request, response) => {
+const updateUser = asyncHandler(async (request, response) => {
 
     const { name, email, password, level, role } = request.body
-    const userExists = await User.findById(request.params.id)
+    const { id } = request.params
+    const reqUser = request.user
 
-    if (email && email !== userExists.email) {
-        const emailExists = await User.findOne({ email });
-        if (emailExists) {
-            response.status(400);
-            throw new Error('This email is already in use');
-        }
-    }
-
-    const userLevel = ["beginner", "intermediate", "advance"]
-    if( level && !userLevel.includes(level) ){
-        response.status(400)
-        throw new Error(`Level "${level}" is not defined`)
-    }
-
-    const userRole = ["student", "teacher"]
-    if( role && !userRole.includes(role)){
-        response.status(400)
-        throw new Error(`Role "${role}" is not defined`)
-    }
-
-    if(!userExists){
+    const user = await User.findById(id)
+    if (!user) {
         response.status(404)
         throw new Error(`User not found`)
     }
 
-    if(request.user.role.toString() !== 'admin' && request.user._id !== request.params.id){
+    let updateData = {}
+    if (name) {
+        if (name.trim().length < 3) {
+            response.status(400)
+            throw new Error(`Name must be atleast three characters long`)
+        }
+        updateData.name = name.trim()
+    }
+
+    if (email) {
+        const emailExists = await User.findOne({ email });
+        if (emailExists && user.email !== email.trim()) {
+            response.status(400)
+            throw new Error(`This email is alredy in use by someone else`)
+        }
+        updateData.email = email.trim()
+    }
+
+    const userLevel = ["beginner", "intermediate", "advance"]
+    if (level) {
+        if (!userLevel.includes(level.trim())) {
+            response.status(400)
+            throw new Error(`Level: ${level} is not a valid level value`)
+        }
+        updateData.level = level.trim()
+    }
+
+    const userRole = ["student", "teacher"]
+    if (role) {
+        if (reqUser.role !== 'admin') {
+            response.status(401)
+            throw new Error(`Access denied. Only admin can update role`)
+        }
+        if (!userRole.includes(role.trim())) {
+            response.status(400)
+            throw new Error(`Role: ${role} is not a valid role value`)
+        }
+        updateData.role = role.trim()
+    }
+
+    if (reqUser.role.toString() !== 'admin' && reqUser._id.toString() !== id) {
         response.status(403)
         throw new Error(`Access denied. User not authorized.`)
     }
 
-    let updatedData = {name, email, level}
-    if(password){
-        const hashedPassword = await bcrypt.hash(password, 10)
-        updatedData.password = hashedPassword;
+    if (password) {
+        if (password.trim().length < 6) {
+            response.status(400)
+            throw new Error(`Password should be at least 6 characters long`)
+        }
+        const hashedPassword = await bcrypt.hash(password.trim(), 10)
+        updateData.password = hashedPassword;
     }
 
-    if(level){
-        updatedData.level = level
-    }
-
-    if(role){
-        updatedData.role = role
-    }
-
-    const user = await User.findByIdAndUpdate(request.params.id, updatedData, {new: true}).select(-password)
+    const updatedUser = await User.findByIdAndUpdate(request.params.id, updateData, { new: true }).select(-password)
     response.status(201).json({
         message: `User updated successfully`,
-        user
+        user: updatedUser
     })
 })
 
-const deleteUser = asyncHandler( async (request, response) => {
+const deleteUser = asyncHandler(async (request, response) => {
 
-    const user = await User.findById(request.params.id)
-    if(!user){
+    const { id } = request.params
+    const reqUser = request.user
+
+    const user = await User.findById(id)
+    if (!user) {
         response.status(404)
         throw new Error(`User not found`)
     }
 
-    if(request.user.role.toString() !== 'admin' && request.user._id !== request.params.id){
+    if (reqUser.role.toString() !== 'admin' && reqUser._id.toString() !== id) {
         response.status(401)
         throw new Error(`Access denied. User not authorized`)
     }
 
-    await User.findByIdAndDelete(request.params.id)
+    await User.findByIdAndDelete(user._id)
+    await Progress.deleteMany({ user: user._id })
+    await Feedback.deleteMany({ user: user._id })
+    await Submission.deleteMany({ student: user._id })
+    await QuizSubmission.deleteMany({ student: user._id })
     response.status(200).json({
-        message: `User deleted successfully`
+        message: `User account deleted successfully`
     })
 })
 

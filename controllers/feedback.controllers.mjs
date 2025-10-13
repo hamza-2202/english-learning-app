@@ -89,7 +89,8 @@ const deleteFeedback = asyncHandler(async (request, response) => {
     await Feedback.findByIdAndDelete(id)
 
     response.status(200).json({
-        message: 'Comment deleted successfully'
+        message: 'Comment deleted successfully',
+        success: true
     })
 })
 
@@ -147,7 +148,7 @@ const updateReply = asyncHandler(async (request, response) => {
 
     if (reply.user.toString() !== user._id.toString()) {
         response.status(403)
-        throw new Error(`Access denied. User] can only update their own replies`)
+        throw new Error(`Access denied. User can only update their own replies`)
     }
 
     if (!content) {
@@ -187,7 +188,7 @@ const deleteReply = asyncHandler(async (request, response) => {
 
     if (user.role === 'student' && reply.user.toString() !== user._id.toString()) {
         response.status(403)
-        throw new Error(`Access denied. Students can only delete their own replies`)
+        throw new Error(`Access denied. Students can only delete their own reply`)
     }
 
     feedback.replies.pull(replyId)

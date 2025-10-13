@@ -1,4 +1,4 @@
-import mongoose, { mongo } from "mongoose";
+import mongoose from "mongoose";
 
 const quizSubmissionSchema = mongoose.Schema({
     quiz: {
@@ -14,7 +14,7 @@ const quizSubmissionSchema = mongoose.Schema({
     answers: [{
         questionId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'Quiz',
+            ref: 'Question',
             required: true
         },
         question: {
@@ -45,12 +45,12 @@ const quizSubmissionSchema = mongoose.Schema({
             min: 0
         }
     }],
-    result: {
+    totalMarks: {
         type: Number,
         required: true,
         min: 0
     },
-    totalMarks: {
+    obtainedMarks: {
         type: Number,
         required: true,
         min: 0

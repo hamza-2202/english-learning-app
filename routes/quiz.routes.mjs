@@ -10,7 +10,8 @@ import {
     updateQuestion,
     deleteQuestion,
     approveQuiz,
-    rejectQuiz
+    rejectQuiz,
+    submitQuiz
 } from "../controllers/quiz.controllers.mjs"
 import { roleMiddleware } from "../middlewares/role.middleware.mjs"
 
@@ -28,5 +29,6 @@ router.route("/question/update/:id").put(roleMiddleware('teacher'), updateQuesti
 router.route("/question/delete/:id").delete(roleMiddleware('teacher'), deleteQuestion)
 router.route("/approve/:id").put(roleMiddleware('admin'), approveQuiz)
 router.route("/reject/:id").put(roleMiddleware('admin'), rejectQuiz)
+router.route("/submit/:id").post(roleMiddleware('student'), submitQuiz)
 
 export default router;

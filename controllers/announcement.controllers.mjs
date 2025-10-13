@@ -18,7 +18,7 @@ const getAllAnnouncement = asyncHandler(async (request, response) => {
     }
 
     if (request.user.role === 'teacher') {
-        const announcements = await Announcement.find({ createdBy: request.user._id })
+        const announcements = await Announcement.find({ createdBy: request.user._id }).populate('createdBy', 'name')
         if (announcements.length === 0) {
             response.status(404)
             throw new Error(`You have not created any announcement yet.`)
@@ -73,7 +73,7 @@ const updateAnnouncement = asyncHandler(async (request, response) => {
     const allowedLevels = ['beginner', 'intermediate', 'advance']
     if(!allowedLevels.includes(level)){
         response.status(400)
-        throw new Error(`Invalid level value '${level}`)
+        throw new Error(`Level: ${level} is not a valid level value`)
     }
 
     if (announcement.createdBy.toString() !== request.user._id.toString()) {

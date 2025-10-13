@@ -17,7 +17,12 @@ const register = asyncHandler(async (request, response) => {
     let user = await User.findOne({ email });
     if (user) {
         response.status(400)
-        throw new Error(`User already exists`)
+        throw new Error(`User with this email already exists`)
+    }
+
+    if (password.trim().length < 6) {
+        response.status(400)
+        throw new Error(`Password should be at least 6 characters long`)
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -35,7 +40,8 @@ const register = asyncHandler(async (request, response) => {
         user: {
             name,
             email,
-            level
+            level,
+            role: user.role
         }
     });
 })
@@ -121,12 +127,20 @@ const forgotPassword = asyncHandler(async (request, response) => {
 const resetPassword = asyncHandler(async (request, response) => {
     const { token, password } = request.body
 
+    if(!password){
+        response.status(400)
+        throw new Error(`Password cannot be empty`)
+    }
     const decoded = jwt.verify(token, process.env.JWT_RESET_SECRET)
 
     const user = await User.findById(decoded.id)
     if (!user || user.provider !== 'email') {
         response.status(400)
         throw new Error(`Invalid or expired token`)
+    }
+    if (password.trim().length < 6) {
+        response.status(400)
+        throw new Error(`Password should be at least 6 characters long`)
     }
     const hashedPassword = await bcrypt.hash(password, 10)
 

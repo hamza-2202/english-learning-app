@@ -34,6 +34,11 @@ const quizSchema = mongoose.Schema({
         type: Number,
         default: 0
     },
+    prerequisiteLesson: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Lesson',
+        default: null
+    },
     status: {
         type: String,
         enum: ['pending', 'approved', 'rejected'],
@@ -52,6 +57,7 @@ const quizSchema = mongoose.Schema({
     }
 )
 
+quizSchema.index({ title: 1 })
 quizSchema.index({ level: 1 })
 quizSchema.index({ category: 1 })
 export const Quiz = mongoose.model('Quiz', quizSchema)

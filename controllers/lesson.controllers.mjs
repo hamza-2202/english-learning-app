@@ -69,6 +69,13 @@ const getAllLesson = asyncHandler(async (request, response) => {
     }
 })
 
+const getMyLessons = asyncHandler( async (request, response) => {
+    const user = request.user
+
+    const lessons = await Lesson.find({createdBy: user._id}).select('_id title description level')
+    response.status(200).json({lessons})
+})
+
 const createLesson = asyncHandler(async (request, response) => {
     const { title, description, level, category, url } = request.body
     const user = request.user
@@ -146,11 +153,13 @@ const deleteLesson = asyncHandler(async (request, response) => {
     }
 
     await Lesson.findByIdAndDelete(id);
+    await Feedback.deleteMany({lesson: id})
     response.status(200).json({ message: 'Lesson deleted successfully' });
 })
 
 export {
     getAllLesson,
+    getMyLessons,
     createLesson,
     updateLesson,
     deleteLesson
