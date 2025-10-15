@@ -15,21 +15,18 @@ const submissionSchema = new mongoose.Schema({
         type: String,
         required: true,
         trim: true,
-        maxlength: 2000
-    },
-    submittedAt: {
-        type: Date,
-        default: Date.now
+        maxlength: 5000
     },
     result: {
         type: Number,
         default: null,
-        min: 0
+        min: 0,
+        max: 25
     },
     feedback: {
         type: String,
         trim: true,
-        maxlength: 100,
+        maxlength: 200,
         default: ''
     },
     status: {

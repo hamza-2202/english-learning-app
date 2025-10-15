@@ -3,17 +3,20 @@ import { Progress } from "./progress.model.mjs";
 
 const UserSchema = mongoose.Schema({
     name: {
-        type: String
+        type: String,
+        trim: true
     },
     email: {
         type: String,
         required: true,
-        unique: true
+        unique: true,
+        trim: true
     },
     role: {
         type: String,
         enum: ["admin", "teacher", "student"],
-        default: 'student'
+        default: 'student',
+        trim: true
     },
     password: {
         type: String
@@ -21,7 +24,8 @@ const UserSchema = mongoose.Schema({
     level: {
         type: String,
         enum: ["beginner", "intermediate", "advance"],
-        default: 'beginner'
+        default: 'beginner',
+        trim: true
     },
     googleId: {
         type: String

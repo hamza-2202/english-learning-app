@@ -227,6 +227,7 @@ const updateQuiz = asyncHandler(async (request, response) => {
                 response.status(400)
                 throw new Error(`Level of this quiz does not match the level of prerequisite lesson`)
             }
+            updateData.prerequisiteLesson = prerequisiteLesson.trim()
         }
         updateData.prerequisiteLesson = prerequisiteLesson
     }
@@ -521,7 +522,7 @@ const submitQuiz = asyncHandler(async (request, response) => {
     let progress = await Progress.findOne({ user: user._id })
 
     if (!progress) {
-        progress = new Progress({ user: user._id, permanentPoints: 0, weeklyPoints: 0 })
+        progress = new Progress({ user: user._id, completedLessons: [], permanentPoints: 0, weeklyPoints: 0 })
         await progress.save()
     }
     
@@ -529,7 +530,7 @@ const submitQuiz = asyncHandler(async (request, response) => {
         const completedLessonIds = progress.completedLessons.map(lesson => lesson.toString())
         if (!completedLessonIds.includes(quiz.prerequisiteLesson.toString())) {
             response.status(401)
-            throw new Error('Student has not completed the prerequisite lesson of this quiz')
+            throw new Error('You must watch the prerequisite lesson before submitting this quiz')
         }
     }
 

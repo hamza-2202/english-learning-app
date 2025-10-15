@@ -38,6 +38,18 @@ const markLessonAsWatched = asyncHandler(async (request, response) => {
     })
 })
 
+const getSingleProgress = asyncHandler( async (request, response) => {
+    const user = request.user
+    const { id } = request.params
+
+    if(!mongoose.Types.ObjectId.isValid(id)) {
+        response.status(400)
+        throw new Error(`Invalid User id`)
+    }
+
+    const progress = await Progress.findOne({ user: id }).populate('user', 'name level')
+})
+
 export {
     markLessonAsWatched
 }
