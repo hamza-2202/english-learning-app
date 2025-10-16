@@ -78,7 +78,11 @@ const getAllAssignments = asyncHandler(async (request, response) => {
 
 /*  Only teacher can create assignments */
 const createAssignment = asyncHandler(async (request, response) => {
-    const { title, description, level, question, marks, prerequisiteLesson } = request.body
+    const { title, description, level, question, marks } = request.body
+    let { prerequisiteLesson } = request.body
+    if (prerequisiteLesson === (null || "null")) {
+        prerequisiteLesson = null
+    }
     const user = request.user
 
     if (!title || !level || !question || !marks) {
@@ -125,9 +129,18 @@ const createAssignment = asyncHandler(async (request, response) => {
 
 /*  teacher can only update those assignments they created */
 const updateAssignment = asyncHandler(async (request, response) => {
-    const { title, description, level, question, marks, prerequisiteLesson } = request.body
+    const { title, description, level, question, marks } = request.body
+    let { prerequisiteLesson } = request.body
+    if (prerequisiteLesson === (null || "null")) {
+        prerequisiteLesson = null
+    }
     const user = request.user
     const { id } = request.params
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        response.status(400)
+        throw new Error(`Invalid assignment ID`)
+    }
 
     const assignment = await Assignment.findById(id)
 
@@ -142,8 +155,14 @@ const updateAssignment = asyncHandler(async (request, response) => {
     }
 
     if (assignment.status === 'approved') {
-        response.status(401)
-        throw new Error(`Cannot update approved assignment`)
+        response.status(403)
+        throw new Error(`Cannot update approved assignment \n Ask admin to reject assignment first to update`)
+    }
+
+    const existing = await Assignment.findOne({ title, level, _id: { $ne: id } })
+    if (existing) {
+        response.status(400)
+        throw new Error(`Assignment with this title and level already exists`)
     }
 
     let updateData = {}
@@ -205,6 +224,11 @@ const deleteAssignment = asyncHandler(async (request, response) => {
     const user = request.user
     const { id } = request.params
 
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        response.status(400)
+        throw new Error(`Invalid assignment ID`)
+    }
+
     const assignment = await Assignment.findById(id)
     if (!assignment) {
         response.status(404)
@@ -234,6 +258,11 @@ const approveAssignment = asyncHandler(async (request, response) => {
 
     const { id } = request.params
 
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        response.status(400)
+        throw new Error(`Invalid assignment ID`)
+    }
+
     let assignment = await Assignment.findById(id)
     if (!assignment) {
         response.status(404)
@@ -259,6 +288,11 @@ const approveAssignment = asyncHandler(async (request, response) => {
 const rejectAssignment = asyncHandler(async (request, response) => {
 
     const { id } = request.params
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        response.status(400)
+        throw new Error(`Invalid assignment ID`)
+    }
 
     let assignment = await Assignment.findById(id)
     if (!assignment) {
@@ -396,15 +430,15 @@ const markSubmission = asyncHandler(async (request, response) => {
     const user = request.user
     let { marks: rawMarks, feedback } = request.body
 
+    if (!mongoose.Types.ObjectId.isValid(id)) {  // Added
+        response.status(400);
+        throw new Error('Invalid submission ID');
+    }
+
     const marks = Number(rawMarks)
     if (isNaN(marks)) {
         response.status(400)
         throw new Error(`Invalid marks`)
-    }
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {  // Added
-        response.status(400);
-        throw new Error('Invalid submission ID');
     }
 
     let submission = await Submission.findById(id).populate('assignment', 'marks createdBy')
