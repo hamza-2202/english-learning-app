@@ -1,6 +1,6 @@
 import asyncHandler from "express-async-handler";
 import { Announcement } from "../models/anouncement.model.mjs";
-import { sanitizeHtml } from "../utils/sanitizer.mjs";
+import { sanitizeContent } from "../utils/sanitizer.mjs";
 import mongoose from "mongoose";
 
 const getAllAnnouncement = asyncHandler(async (request, response) => {
@@ -62,7 +62,7 @@ const createAnnouncement = asyncHandler(async (request, response) => {
         throw new Error(`Error: ${level} is not a valid level value`)
     }
 
-    const title = sanitizeHtml(rawTitle)
+    const title = sanitizeContent(rawTitle)
     if (title.length < 10) {     // Post-sanitization check (e.g., if all was stripped)
         response.status(400)
         throw new Error('Invalid Title: title is too short after sanitization');
@@ -71,7 +71,7 @@ const createAnnouncement = asyncHandler(async (request, response) => {
         console.warn(`Title sanitized for user ${user._id}: unsafe elements detected`)    // Log for monitoring
     }
 
-    const content = sanitizeHtml(rawContent)
+    const content = sanitizeContent(rawContent)
     if (content.length < 10) {     // Post-sanitization check (e.g., if all was stripped)
         response.status(400)
         throw new Error('Invalid Content: content is too short after sanitization');
@@ -126,7 +126,7 @@ const updateAnnouncement = asyncHandler(async (request, response) => {
         throw new Error(`Error: ${level} is not a valid level value`)
     }
 
-    const title = sanitizeHtml(rawTitle)
+    const title = sanitizeContent(rawTitle)
     if (title.length < 10) {     // Post-sanitization check (e.g., if all was stripped)
         response.status(400)
         throw new Error('Invalid Title: title is too short after sanitization');
@@ -139,7 +139,7 @@ const updateAnnouncement = asyncHandler(async (request, response) => {
         throw new Error(`Maximum 300 characters are allowed for announcement title`)
     }
 
-    const content = sanitizeHtml(rawContent)
+    const content = sanitizeContent(rawContent)
     if (content.length < 10) {     // Post-sanitization check (e.g., if all was stripped)
         response.status(400)
         throw new Error('Invalid Content: content is too short after sanitization');

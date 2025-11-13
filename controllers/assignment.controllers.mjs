@@ -4,7 +4,7 @@ import { Assignment } from "../models/assignment.model.mjs"
 import { Submission } from "../models/assignment.submissions.model.mjs"
 import { Lesson } from "../models/lesson.model.mjs"
 import { Progress } from "../models/progress.model.mjs"
-import { sanitizeHtml } from "../utils/sanitizer.mjs"
+import { sanitizeContent } from "../utils/sanitizer.mjs"
 
 /*  admin can get fetch all the assignments (approved, pending, or rejected),
     teacher can only fetch their own assignments (approved, pending, or rejected),
@@ -349,7 +349,7 @@ const submitAssignment = asyncHandler(async (request, response) => {
     }
 
     // Server-side sanitization (re-validate client input)
-    const sanitizedContent = sanitizeHtml(content)
+    const sanitizedContent = sanitizeContent(content)
     if (sanitizedContent.length < 10) {     // Post-sanitization check (e.g., if all was stripped)
         response.status(400)
         throw new Error('Invalid content: Too little safe content after sanitization');
@@ -383,6 +383,14 @@ const submitAssignment = asyncHandler(async (request, response) => {
         student: user._id,
         content: sanitizedContent
     })
+    if (submission._id) {
+        let progress = await Progress.findOne({ user: user._id }).select("completedAssignments")
+        progress.completedAssignments.push(assignment._id)
+        await progress.save()
+    } else {
+        response.status(500)
+        throw new Error(`Something went wrong while submitting assignment`)
+    }
 
     response.status(201).json({
         message: 'Assignment submitted successfully',

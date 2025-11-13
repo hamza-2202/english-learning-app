@@ -2,7 +2,10 @@ import mongoose from "mongoose";
 
 const progressSchema = mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    level: { type: String, enum: ["beginner", "intermediate", "advance"]},
     completedLessons: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Lesson' }],
+    completedAssignments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Assignment' }],
+    completedQuizzes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Quiz' }],
     permanentPoints: { type: Number, min: 0 },
     weeklyPoints: { type: Number, min: 0 },
     totalPoints: { type: Number, min: 0 }

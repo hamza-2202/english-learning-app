@@ -9,6 +9,7 @@ const UserSchema = mongoose.Schema({
     email: {
         type: String,
         required: true,
+        lowercase: true,
         unique: true,
         trim: true
     },
@@ -44,21 +45,7 @@ const UserSchema = mongoose.Schema({
     })
 
 UserSchema.index({ level: 1 })
-// UserSchema.post('save', async function(doc) {
-//     if (doc.isNew && doc.role === 'student') {
-//         try {
-//             const existing = await Progress.findOne({ user: doc._id });
-//             if (!existing) {
-//                 const progress = new Progress({
-//                     user: doc._id, permanentPoints: 0, weeklyPoints: 0
-//                 })
-//                 await progress.save()
-//             }
-//         } catch (error) {
-//             console.error('Progress creation failed:', error)
-//         }
-//     }
-// });
+
 UserSchema.pre('save', async function (next) {
     if (this.isNew && this.role === 'student') {
         try {
@@ -66,6 +53,7 @@ UserSchema.pre('save', async function (next) {
             if (!existing) {
                 const progress = new Progress({
                     user: this._id,
+                    level: this.level,
                     permanentPoints: 0,
                     weeklyPoints: 0
                 });

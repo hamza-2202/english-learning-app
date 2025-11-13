@@ -7,49 +7,59 @@ import { QuizSubmission } from "../models/quizSubmission.model.mjs"
 
 const getAllQuiz = asyncHandler(async (request, response) => {
     const user = request.user
+    let quizzes = []
+    let count = 0
 
     if (user.role === 'student') {
-        const quizzes = await Quiz.find({ level: user.level, status: 'approved' })
+        quizzes = await Quiz.find({ level: user.level, status: 'approved' }).select("title description category totalMarks prerequisiteLesson").populate("prerequisiteLesson", "title category url").lean()
+
+        const quizIds = quizzes.map(quiz => quiz._id)
+
+        const submissions = await QuizSubmission.find({
+            student: user._id,
+            quiz: { $in: quizIds }
+        }).select("quiz obtainedMarks")
+
+        const submissionMap = new Map(submissions.map(s => [s.quiz.toString(), s.obtainedMarks]))
+
+        quizzes = quizzes.map(quiz => ({
+            ...quiz,
+            obtainedMarks: submissionMap.get(quiz._id.toString()) || null,
+            status: submissionMap.get(quiz._id.toString()) ? "submitted" : "not submitted"
+        }))
 
         if (quizzes.length === 0) {
             response.status(404)
-            throw new Error(`Quiz not found`)
+            throw new Error(`No quizzes available for your level yet`)
         }
-
-        response.status(200).json({
-            count: quizzes.length,
-            quizzes
-        })
+        count = quizzes.length
     }
 
     if (user.role === 'teacher') {
-        const quizzes = await Quiz.find({ createdBy: user._id }).populate({
+        quizzes = await Quiz.find({ createdBy: user._id }).populate({
             path: 'questions',
             select: '_id question options answer marks'
-        })
+        }).select("-createdBy -createdAt -updatedAt -__v")
+
         if (quizzes.length === 0) {
             response.status(404)
             throw new Error(`You have not created any quiz yet`)
         }
-
-        response.status(200).json({
-            count: quizzes.length,
-            quizzes
-        })
+        count = quizzes.length
     }
 
     if (user.role === 'admin') {
-        const quizzes = await Quiz.find()
+        quizzes = await Quiz.find()
         if (quizzes.length === 0) {
             response.status(404)
             throw new Error(`Quiz not found`)
         }
-
-        response.status(200).json({
-            count: quizzes.length,
-            quizzes
-        })
+        count = quizzes.length
     }
+    response.status(200).json({
+        count,
+        quizzes
+    })
 })
 
 const getSingleQuiz = asyncHandler(async (request, response) => {
@@ -74,7 +84,7 @@ const getSingleQuiz = asyncHandler(async (request, response) => {
 
             response.status(401)
             throw new Error(`You must watch prerequisite lesson to start this quiz`)
-        } 
+        }
         if (quiz.prerequisiteLesson && !progress.completedLessons.includes(quiz.prerequisiteLesson.toString())) {
             response.status(401)
             throw new Error(`You must watch prerequisite lesson to start this quiz`)
@@ -142,8 +152,10 @@ const createQuiz = asyncHandler(async (request, response) => {
     }
 
     let createData = { title: title.trim(), level: level.trim(), category: category.trim(), createdBy: user._id }
-    if (description.trim()) {
+    if (description) {
         createData.description = description.trim()
+    } else {
+        createData.description = null
     }
 
     if (prerequisiteLesson) {
@@ -157,6 +169,8 @@ const createQuiz = asyncHandler(async (request, response) => {
             throw new Error(`Level of this quiz does not match the level of prerequisite lesson`)
         }
         createData.prerequisiteLesson = prerequisiteLesson.trim()
+    } else {
+        createData.prerequisiteLesson = null
     }
 
     // check for duplicate title under same level
@@ -522,10 +536,10 @@ const submitQuiz = asyncHandler(async (request, response) => {
     let progress = await Progress.findOne({ user: user._id })
 
     if (!progress) {
-        progress = new Progress({ user: user._id, completedLessons: [], permanentPoints: 0, weeklyPoints: 0 })
+        progress = new Progress({ user: user._id, completedLessons: [], completedAssignments: [], completedQuizzes: [], permanentPoints: 0, weeklyPoints: 0 })
         await progress.save()
     }
-    
+
     if (quiz.prerequisiteLesson) {
         const completedLessonIds = progress.completedLessons.map(lesson => lesson.toString())
         if (!completedLessonIds.includes(quiz.prerequisiteLesson.toString())) {
@@ -559,9 +573,11 @@ const submitQuiz = asyncHandler(async (request, response) => {
     })
     try {
         const submission = await QuizSubmission.create({ quiz: id, student: user._id, answers: submissionObj, totalMarks: quiz.totalMarks, obtainedMarks })
-        progress.weeklyPoints += (obtainedMarks * 5)
-        await progress.save()
         if (submission._id) {
+            progress.weeklyPoints += (obtainedMarks * 5)
+            progress.completedQuizzes.push(quiz._id)
+            await progress.save()
+
             response.status(201).json({
                 message: `Quiz submitted successfully`,
                 success: true,

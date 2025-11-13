@@ -6,7 +6,7 @@ import { JSDOM } from 'jsdom';
 const { window } = new JSDOM('');
 const purify = DOMPurify(window);
 
-export const sanitizeHtml = (dirtyHtml) => {
+const sanitizeContent = (dirtyHtml) => {
   return purify.sanitize(dirtyHtml, {
     ALLOWED_TAGS: [
       'p', 'br', 'strong', 'em', 'u', 'strike', 'sub', 'sup', 'h1', 'h2',
@@ -16,4 +16,16 @@ export const sanitizeHtml = (dirtyHtml) => {
     FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input'],
     FORBID_ATTR: ['style', 'class', 'id', 'onclick', 'onload']
   })
+}
+
+const sanitizeAll = (dirtyHtml) => {
+  return purify.sanitize(dirtyHtml, {
+    ALLOWED_TAGS: [],
+    ALLOWED_ATTR: []
+  })
+}
+
+export {
+  sanitizeContent,
+  sanitizeAll
 }
