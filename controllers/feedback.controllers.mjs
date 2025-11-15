@@ -1,7 +1,30 @@
+import mongoose from "mongoose"
 import { Feedback } from "../models/lesson.feedback.mjs"
 import { Lesson } from "../models/lesson.model.mjs"
 import asyncHandler from "express-async-handler"
 
+const getFeedbacks = asyncHandler(async (request, response) => {
+    const { id } = request.params
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        response.status(400)
+        throw new Error(`Invalid lesson id`)
+    }
+
+    const lesson = await Lesson.findById(id)
+    if (!lesson) {
+        response.status(404)
+        throw new Error(`Lesson not found`)
+    }
+    const feedbacks = await Feedback.find({ lesson: id })
+        .populate("user", "name level")
+        .populate("replies.user", "name level")
+        .select("-lesson -updatedAt -__v")
+        .sort({ createdAt: -1 })
+        .lean()
+
+    response.status(200).json(feedbacks)
+})
 
 const createFeedback = asyncHandler(async (request, response) => {
     const { id } = request.params
@@ -205,6 +228,7 @@ const deleteReply = asyncHandler(async (request, response) => {
 })
 
 export {
+    getFeedbacks,
     createFeedback,
     updateFeedback,
     deleteFeedback,

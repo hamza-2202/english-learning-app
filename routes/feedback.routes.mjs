@@ -1,5 +1,6 @@
 import express from "express"
 import {
+    getFeedbacks,
     createFeedback,
     updateFeedback,
     deleteFeedback,
@@ -13,6 +14,7 @@ import { roleMiddleware } from "../middlewares/role.middleware.mjs"
 const router = express.Router()
 
 router.use(verifyToken)
+router.route("/:id").get(getFeedbacks)
 router.route("/create/:id").post(roleMiddleware(['student', 'teacher']), createFeedback)
 router.route("/update/:id").put(roleMiddleware(['student', 'teacher']), updateFeedback)
 router.route("/delete/:id").delete(roleMiddleware(['student', 'teacher']), deleteFeedback)
