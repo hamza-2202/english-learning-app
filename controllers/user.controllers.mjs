@@ -90,7 +90,7 @@ const getSingleUser = asyncHandler(async (request, response) => {
         userExists.totalPoints = totalPoints.totalPoints
     }
 
-    if(userExists.role === "admin"){
+    if (userExists.role === "admin") {
         response.status(400)
         throw new Error(`This users profile is hidden`)
     }
@@ -111,6 +111,11 @@ const updateUser = asyncHandler(async (request, response) => {
     const password = rawPassword ? rawPassword.trim() : undefined
     const level = rawLevel ? rawLevel.trim().toLowerCase() : undefined
 
+    if(!name && !email && !role && !password && !level){
+        response.status(400)
+        throw new Error(`Minimum 1 field is necessary`)
+    }
+
     if (!mongoose.Types.ObjectId.isValid(id)) {
         response.status(400)
         throw new Error(`Invalid user id`)
@@ -129,15 +134,6 @@ const updateUser = asyncHandler(async (request, response) => {
             throw new Error(`Name must be between 3 and 50 characters`)
         }
         updateData.name = name
-    }
-
-    if (email) {
-        const emailExists = await User.findOne({ email });
-        if (emailExists && user.email.toLowerCase() !== email) {
-            response.status(400)
-            throw new Error(`This email is already in use by someone else`)
-        }
-        updateData.email = email
     }
 
     if (level && user.level !== level) {
@@ -175,16 +171,34 @@ const updateUser = asyncHandler(async (request, response) => {
         updateData.password = hashedPassword;
     }
 
-    const updatedUser = await User.findByIdAndUpdate(id, updateData, { new: true }).select('-password ')
-    if(!updatedUser._id){
+    if (email) {
+        const emailExists = await User.findOne({ email });
+        if (emailExists && user.email.toLowerCase() !== email) {
+            response.status(400)
+            throw new Error(`This email is already in use by someone else`)
+        }
+        updateData.email = email
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(id, updateData, { new: true }).select('_id name email level role').lean()
+    if (!updatedUser._id) {
         response.status(500)
         throw new Error(`Something went wrong while updating user`)
     }
-    if (level && user.level !== level) {
-        if (allowedLevels.includes(level)) {
-            const progress = await Progress.findOne({ user: id })
-            progress.level = level
-            await progress.save()
+
+    if (updatedUser.role === "student") {
+        if (level && level !== user.level) {
+            let progress = await Progress.findOne({ user: id })
+            if (!progress) {
+                progress = new Progress({
+                    user: user._id,
+                    level: level
+                })
+                await progress.save()
+            } else {
+                progress.level = level
+                await progress.save()
+            }
         }
     }
     response.status(200).json({
