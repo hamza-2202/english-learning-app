@@ -44,5 +44,6 @@ const lessonSchema = mongoose.Schema({
 })
 
 lessonSchema.index({ level: 1 })
+lessonSchema.index({ createdBy: 1 })
 
 export const Lesson = mongoose.model('Lesson', lessonSchema)

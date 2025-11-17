@@ -57,7 +57,9 @@ const quizSchema = mongoose.Schema({
     }
 )
 
-quizSchema.index({ title: 1 })
-quizSchema.index({ level: 1 })
-quizSchema.index({ category: 1 })
+quizSchema.index({ level: 1, title: 1 })
+quizSchema.index({ level: 1, status: 1 })
+quizSchema.index({ status: 1 })
+quizSchema.index({ createdAt: -1 })
+
 export const Quiz = mongoose.model('Quiz', quizSchema)

@@ -2,21 +2,22 @@ import mongoose from "mongoose";
 
 const progressSchema = mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    level: { type: String, enum: ["beginner", "intermediate", "advance"]},
+    level: { type: String, enum: ["beginner", "intermediate", "advance"] },
     completedLessons: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Lesson' }],
     completedAssignments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Assignment' }],
     completedQuizzes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Quiz' }],
-    permanentPoints: { type: Number, min: 0 },
-    weeklyPoints: { type: Number, min: 0 },
+    permanentPoints: { type: Number, min: 0, default: 0 },
+    weeklyPoints: { type: Number, min: 0, default: 0 },
     totalPoints: { type: Number, min: 0 }
 },
-{ timestamps: true }
+    { timestamps: true }
 )
 
-progressSchema.index({user: 1})
-progressSchema.index({totalPoints: -1})
+progressSchema.index({ user: 1 })
+progressSchema.index({ user: 1, level: 1 })
+progressSchema.index({ totalPoints: -1 })
 
-progressSchema.pre('save', function(next){
+progressSchema.pre('save', function (next) {
     this.totalPoints = this.permanentPoints + this.weeklyPoints
     next()
 })

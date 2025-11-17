@@ -30,7 +30,8 @@ const assignmentSchema = new mongoose.Schema({
     timestamps: true
   })
 
-assignmentSchema.index({ level: 1 })
+assignmentSchema.index({ level: 1, status: 1 })
+assignmentSchema.index({ status: 1 })
 assignmentSchema.index({ createdBy: 1 })
 
 export const Assignment = mongoose.model('Assignment', assignmentSchema)

@@ -45,6 +45,8 @@ const UserSchema = mongoose.Schema({
     })
 
 UserSchema.index({ level: 1 })
+UserSchema.index({ role: 1 })
+UserSchema.index({ createdAt: 1 })
 
 UserSchema.pre('save', async function (next) {
     if (this.isNew && this.role === 'student') {

@@ -39,7 +39,7 @@ const submissionSchema = new mongoose.Schema({
     timestamps: true
 })
 
-submissionSchema.index({ assignment: 1, student: 1 });
-submissionSchema.index({createdAt: -1})
+submissionSchema.index({ assignment: 1, student: 1 }, { unique: true });
+submissionSchema.index({ createdAt: -1 })
 
 export const Submission = mongoose.model('Submission', submissionSchema)
