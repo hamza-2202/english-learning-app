@@ -4,13 +4,17 @@ import { roleMiddleware } from "../middlewares/role.middleware.mjs";
 import {
     markLessonAsWatched,
     getLeaderboard,
-    getMyProgress
+    getMyProgress,
+    getSingleProgress,
+    getAdminDashboard
 } from "../controllers/progress.controllers.mjs"
 
 const router = express.Router()
 
-router.route("/progress/add-lesson/:id").put(verifyToken, roleMiddleware('student'), markLessonAsWatched)
+router.route("/admin/dashboard").get(verifyToken, roleMiddleware('admin'), getAdminDashboard)
+router.route("/progress/lesson/:id").put(verifyToken, roleMiddleware('student'), markLessonAsWatched)
 router.route("/leaderboard").get(verifyToken, getLeaderboard)
-router.route("/my-progress").get(verifyToken, roleMiddleware("student"), getMyProgress)
+router.route("/progress").get(verifyToken, roleMiddleware("student"), getMyProgress)
+router.route("/progress/:id").get(verifyToken, roleMiddleware(["admin", "teacher"]), getSingleProgress)
 
 export default router;

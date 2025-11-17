@@ -17,6 +17,6 @@ router.use("/api/v1/lesson/feedback", feedbackRoutes)
 router.use("/api/v1/assignment", assignmentRoutes)
 router.use("/api/v1/quiz", quizRoutes)
 router.use("/api/v1/announcement", announcementRoutes)
-router.use("/api/v1", progressRoutes)
+router.use("/api/v1", progressRoutes)   // conatains admin dashoard api as well
 
 export default router;
