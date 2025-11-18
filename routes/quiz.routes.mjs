@@ -11,7 +11,8 @@ import {
     deleteQuestion,
     approveQuiz,
     rejectQuiz,
-    submitQuiz
+    submitQuiz,
+    deleteSubmission
 } from "../controllers/quiz.controllers.mjs"
 import { roleMiddleware } from "../middlewares/role.middleware.mjs"
 
@@ -24,11 +25,12 @@ router.route("/:id").get(getSingleQuiz)
 router.route("/create").post(roleMiddleware('teacher'), createQuiz)
 router.route("/update/:id").put(roleMiddleware('teacher'), updateQuiz)
 router.route("/delete/:id").delete(roleMiddleware('teacher'), deleteQuiz)
-router.route("/question/add/:id").post(roleMiddleware('teacher'), addQuestion)
-router.route("/question/update/:id").put(roleMiddleware('teacher'), updateQuestion)
-router.route("/question/delete/:id").delete(roleMiddleware('teacher'), deleteQuestion)
+router.route("/question/:id").post(roleMiddleware('teacher'), addQuestion)
+router.route("/question/:id").put(roleMiddleware('teacher'), updateQuestion)
+router.route("/question/:id").delete(roleMiddleware('teacher'), deleteQuestion)
 router.route("/approve/:id").put(roleMiddleware('admin'), approveQuiz)
 router.route("/reject/:id").put(roleMiddleware('admin'), rejectQuiz)
 router.route("/submit/:id").post(roleMiddleware('student'), submitQuiz)
+router.route("/:quizId/student/:studentId").delete(roleMiddleware('teacher'), deleteSubmission)
 
 export default router;
