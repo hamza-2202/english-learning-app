@@ -15,6 +15,7 @@ const progressSchema = mongoose.Schema({
 
 progressSchema.index({ user: 1 })
 progressSchema.index({ user: 1, level: 1 })
+progressSchema.index({ level: 1, totalPoints: -1 })
 progressSchema.index({ totalPoints: -1 })
 
 progressSchema.pre('save', function (next) {

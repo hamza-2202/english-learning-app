@@ -105,17 +105,34 @@ const getSingleProgress = asyncHandler(async (request, response) => {
         throw new Error(`Access denied, user progress is not available`)
     }
 
-    const progress = await Progress.findOne({ user: id })
+    let progress = await Progress.findOne({ user: id })
         .populate('user', 'name level role')
-        .select('user level permanentPoints weeklyPoints totalPoints createdAt')
-        .lean()
+        .populate('completedLessons', 'title level url category')
+        .populate('completedAssignments', 'title level question category')
+        .populate('completedQuizzes', 'title level category')
+        .select('user level permanentPoints weeklyPoints totalPoints completedLessons completedAssignments completedQuizzes createdAt')
+
     if (!progress) {
-        response.status(404)
-        throw new Error(`Progress not found`)
+        progress = new Progress({
+            user: userExists._id,
+            level: userExists.level
+        })
+        await progress.save()
+        progress = await Progress.findOne({ user: id })
+            .populate('user', 'name level role')
+            .select('user level permanentPoints weeklyPoints totalPoints completedLessons completedAssignments completedQuizzes createdAt')
     }
 
+    const higherRankCount = await Progress.countDocuments({
+        level: userExists.level,
+        totalPoints: { $gt: progress.totalPoints }
+    })
+
     response.status(200).json({
-        progress
+        progress: {
+            ...progress.toObject(),
+            rank: higherRankCount + 1
+        }
     })
 })
 
