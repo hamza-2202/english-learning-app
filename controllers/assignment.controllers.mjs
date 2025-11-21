@@ -42,7 +42,8 @@ const getAllAssignments = asyncHandler(async (request, response) => {
         const submissionMap = new Map(submissions.map(s => [s.assignment.toString(), s]))
         assignments = assignments.map(assignment => ({
             ...assignment,
-            submission: submissionMap.get(assignment._id.toString()) || null
+            submission: submissionMap.get(assignment._id.toString()) || null,
+            status: submissionMap.get(assignment._id.toString()) ? "submitted" : "not-submitted"
         }))
         count = assignments.length
     }
@@ -51,7 +52,9 @@ const getAllAssignments = asyncHandler(async (request, response) => {
 
         assignments = await Assignment.find({ createdBy: user._id })
             .populate('prerequisiteLesson', 'title category url')
-            .populate('createdBy', 'name email').lean()
+            .populate('createdBy', 'name email')
+            .select("-updatedAt -__v")
+            .lean()
 
         if (assignments.length === 0) {
             response.status(404)
@@ -337,18 +340,7 @@ const submitAssignment = asyncHandler(async (request, response) => {
         throw new Error('Content too long (max 5000 characters)')
     }
 
-    const assignment = await Assignment.findById(id)
-    if (!assignment) {
-        response.status(500)
-        throw new Error('Assignment not found')
-    }
-
-    if (assignment.status !== 'approved') {
-        response.status(400)
-        throw new Error(`The assignment you are trying to submit is not yet approved`)
-    }
-
-    // Server-side sanitization (re-validate client input)
+    // Sanitizing client input
     const sanitizedContent = sanitizeContent(content)
     if (sanitizedContent.length < 10) {     // Post-sanitization check (e.g., if all was stripped)
         response.status(400)
@@ -358,44 +350,71 @@ const submitAssignment = asyncHandler(async (request, response) => {
         console.warn(`Content sanitized for user ${user._id}: unsafe elements detected`)    // Log for monitoring
     }
 
-    // Check if student has already submitted
-    const existingSubmission = await Submission.findOne({ assignment: id, student: user._id })
-    if (existingSubmission) {
-        response.status(400)
-        throw new Error('You have already submitted this assignment')
-    }
+    const session = await mongoose.startSession()
+    session.startTransaction()
+    try {
+        const assignment = await Assignment.findById(id).session(session)
+        if (!assignment) {
+            await session.abortTransaction()
+            response.status(404)
+            throw new Error('Assignment not found')
+        }
 
-    if (assignment.prerequisiteLesson) {
-        let progress = await Progress.findOne({ user: user._id })
+        if (assignment.status !== 'approved') {
+            await session.abortTransaction()
+            response.status(400)
+            throw new Error(`The assignment you are trying to submit is not yet approved`)
+        }
+
+        // Check if student has already submitted
+        const existingSubmission = await Submission.findOne({ assignment: id, student: user._id }).session(session)
+        if (existingSubmission) {
+            await session.abortTransaction()
+            response.status(400)
+            throw new Error('You have already submitted this assignment')
+        }
+
+        let progress = await Progress.findOne({ user: user._id }).session(session)
         if (!progress) {
-            progress = new Progress({ user: user._id, completedLessons: [], permanentPoints: 0, weeklyPoints: 0 })
+            progress = new Progress({ user: user._id, completedLessons: [], completedQuizzes: [], completedAssignments: [] })
             await progress.save()
         }
-        const completedLessons = progress.completedLessons.map(cl => cl.toString())
-        if (!completedLessons.includes(assignment.prerequisiteLesson.toString())) {
-            response.status(400)
-            throw new Error(`You must watch the prerequisite lesson before submitting this assignment`)
+        if (assignment.prerequisiteLesson) {
+            const completedLessons = progress.completedLessons.map(cl => cl.toString())
+            if (!completedLessons.includes(assignment.prerequisiteLesson.toString())) {
+                await session.abortTransaction()
+                response.status(400)
+                throw new Error(`You must watch the prerequisite lesson before submitting this assignment`)
+            }
         }
-    }
 
-    const submission = await Submission.create({
-        assignment: id,
-        student: user._id,
-        content: sanitizedContent
-    })
-    if (submission._id) {
-        let progress = await Progress.findOne({ user: user._id }).select("completedAssignments")
-        progress.completedAssignments.push(assignment._id)
-        await progress.save()
-    } else {
-        response.status(500)
-        throw new Error(`Something went wrong while submitting assignment`)
-    }
+        const submission = await Submission.create([{
+            assignment: id,
+            student: user._id,
+            content: sanitizedContent
+        }], { session })
+        if (submission) {
+            progress.completedAssignments.addToSet(assignment._id)
+            await progress.save({ session })
+        } else {
+            await session.abortTransaction()
+            response.status(500)
+            throw new Error(`Something went wrong while submitting assignment`)
+        }
 
-    response.status(201).json({
-        message: 'Assignment submitted successfully',
-        submission
-    })
+        session.commitTransaction()
+
+        response.status(201).json({
+            message: 'Assignment submitted successfully',
+            submission
+        })
+    } catch (error) {
+        await session.abortTransaction()
+
+        throw new Error(`Error: ${error.message}`)
+    } finally {
+        session.endSession()
+    }
 })
 
 /* teacher can get all submissions for the assignments they created, and later they can award marks to them */
@@ -415,7 +434,6 @@ const getAllSubmissions = asyncHandler(async (request, response) => {
     }
 
     if (user._id.toString() !== assignment.createdBy.toString()) {
-        // if (user._id.equals(assignment.createdBy)) {
         response.status(403)
         throw new Error(`Access denied. Only author of the assignment can access submissions`)
     }
@@ -424,6 +442,8 @@ const getAllSubmissions = asyncHandler(async (request, response) => {
         // .populate('assignment', 'title question marks')
         .populate('student', 'name')
         .sort({ createdAt: -1 })
+        .select("-updatedAt -__v -assignment")
+        .lean()
 
     response.status(200).json({
         count: submissions.length,
@@ -438,7 +458,7 @@ const markSubmission = asyncHandler(async (request, response) => {
     const user = request.user
     let { marks: rawMarks, feedback } = request.body
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {  // Added
+    if (!mongoose.Types.ObjectId.isValid(id)) {
         response.status(400);
         throw new Error('Invalid submission ID');
     }
@@ -449,51 +469,74 @@ const markSubmission = asyncHandler(async (request, response) => {
         throw new Error(`Invalid marks`)
     }
 
-    let submission = await Submission.findById(id).populate('assignment', 'marks createdBy')
-    if (!submission) {
-        response.status(404)
-        throw new Error(`Submission not found`)
-    }
+    let session;
+    // Start a session for the transaction
+    session = await mongoose.startSession()
+    session.startTransaction()
+    try {
 
-    const assignment = submission.assignment
-    if (!assignment) {
-        response.status(404)
-        throw new Error(`Assignment not found`)
-    }
+        let submission = await Submission.findById(id).populate('assignment', 'marks createdBy').session(session)
+        if (!submission) {
+            response.status(404)
+            throw new Error(`Submission not found`)
+        }
 
-    if (user._id.toString() !== assignment.createdBy.toString()) {
-        response.status(403)
-        throw new Error(`Access denied. Only author of the assignment can mark submisions`)
-    }
+        const assignment = submission.assignment
 
-    if (marks < 0 || marks > assignment.marks) {
-        response.status(400)
-        throw new Error(`Marks must be between 0 and ${assignment.marks}`)
-    }
+        if (user._id.toString() !== assignment.createdBy.toString()) {
+            response.status(403)
+            throw new Error(`Access denied. Only author of the assignment can mark submissions`)
+        }
 
-    let progress = await Progress.findOne({ user: submission.student })
-    if (!progress) {
+        if (marks < 0 || marks > assignment.marks) {
+            response.status(400)
+            throw new Error(`Marks must be between 0 and ${assignment.marks}`)
+        }
+
+        const oldMarks = submission.result || 0;
+        const pointDisfference = (marks - oldMarks) * 5
+
+        // update progress with session
+        const progress = await Progress.findOneAndUpdate(
+            { user: submission.student },
+            { $inc: { weeklyPoints: pointDisfference } },
+            { new: true, session }
+        )
+        if (!progress) {
+            response.status(404)
+            throw new Error(`Student progress not found`)
+        }
+
+        // Update the submission details
+        submission.result = marks
+        if (feedback) {
+            submission.feedback = feedback.trim().substring(0, 200)     // Trim and cap
+        }
+        submission.status = 'marked';
+        await submission.save({ session })
+
+        // Commit the transaction if everything is successful
+        await session.commitTransaction()
+
+        response.status(200).json({
+            message: `Submission marked successfully`,
+            submission
+        });
+
+    } catch (error) {
+        if (session) {
+            await session.abortTransaction()    // Abort transaction in case of any error
+        }
+
         response.status(500)
-        throw new Error(`Something went wrong while marking assignment`)
+        throw new Error(`Error: ${error.message}`)
+    } finally {
+        if (session) {
+            session.endSession()
+        }
     }
-    progress.weeklyPoints -= (submission.result * 5)
-    progress.weeklyPoints += (marks * 5)
-    await progress.save()
-
-
-    submission.result = marks
-    if (feedback) {
-        submission.feedback = feedback.trim().substring(0, 200);  // Trim and cap
-    }
-    submission.status = 'marked'
-
-    await submission.save()
-
-    response.status(200).json({
-        message: `Submission marked successfully`,
-        submission
-    })
 })
+
 
 export {
     getAllAssignments,
