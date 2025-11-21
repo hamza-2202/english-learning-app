@@ -8,15 +8,9 @@ const getAllLesson = asyncHandler(async (request, response) => {
 
     if (user.role === 'student') {
         const lessons = await Lesson.find({ level: user.level })
-            // .populate({
-            //     path: 'feedbacks',
-            //     select: 'content user replies createdAt',
-            //     populate: [
-            //         { path: 'user', select: 'name role' },
-            //         { path: 'replies.user', select: 'name role' }
-            //     ],
-            //     options: { strictPopulate: false }
-            // })
+            .select("-createdBy -updatedAt -feedbacks -__v")
+            .sort({createdAt: 1})
+            .lean()
         if (lessons.length === 0) {
             response.status(404);
             throw new Error(`Lessons not found`);
@@ -29,15 +23,9 @@ const getAllLesson = asyncHandler(async (request, response) => {
 
     if (user.role === 'teacher') {
         const lessons = await Lesson.find({ createdBy: user._id })
-        // .populate({
-        //     path: 'feedbacks',
-        //     select: 'content user replies createdAt',
-        //     populate: [
-        //         { path: 'user', select: 'name role' },
-        //         { path: 'replies.user', select: 'name role' }
-        //     ],
-        //     options: { strictPopulate: false }
-        // })
+            .select("-createdBy -updatedAt -feedbacks -__v")
+            .sort({createdAt: -1})
+            .lean()
         if (lessons.length === 0) {
             response.status(404);
             throw new Error(`You have not created any lesson yet`);
@@ -50,15 +38,11 @@ const getAllLesson = asyncHandler(async (request, response) => {
 
     if (user.role === 'admin') {
         const lessons = await Lesson.find()
-        // .populate({
-        //     path: 'feedbacks',
-        //     select: 'content user replies createdAt',
-        //     populate: [
-        //         { path: 'user', select: 'name role' },
-        //         { path: 'replies.user', select: 'name role' }
-        //     ],
-        //     options: { strictPopulate: false }
-        // })
+            .populate("createdBy", "name email")
+            .select("-updatedAt -feedbacks -__v")
+            .sort({createdAt: -1})
+            .lean()
+
         if (lessons.length === 0) {
             response.status(404);
             throw new Error(`Lessons not found`);
@@ -68,6 +52,8 @@ const getAllLesson = asyncHandler(async (request, response) => {
             lessons
         })
     }
+    response.status(500)
+    throw new Error(`Something went wrong`)
 })
 
 const getMyLessons = asyncHandler(async (request, response) => {
