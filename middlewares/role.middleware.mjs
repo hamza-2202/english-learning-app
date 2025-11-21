@@ -3,7 +3,7 @@ export const roleMiddleware = (allowedRoles) => {
         try {
             if (!allowedRoles.includes(request.user.role.toString())) {
                 response.status(403)
-                throw new Error(`Access denied. ${request.user.role} role is not authorized`)
+                throw new Error(`Access denied, ${request.user.role} role is not authorized`)
             }
             next()
         } catch (err) {

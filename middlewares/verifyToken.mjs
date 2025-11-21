@@ -7,9 +7,8 @@ export const verifyToken = asyncHandler(async (request, response, next) => {
     let token =""
     if (request.headers.authorization || request.headers.authorization.startsWith("Bearer")) {
         token = request.headers.authorization.split(" ")[1]
-        console.log(token);
+        
         const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY)
-        console.log(decoded);
         const user = await User.findById(decoded._id).select("-password")
 
         if (!user) {
