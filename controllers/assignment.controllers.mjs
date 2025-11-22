@@ -355,13 +355,11 @@ const submitAssignment = asyncHandler(async (request, response) => {
     try {
         const assignment = await Assignment.findById(id).session(session)
         if (!assignment) {
-            await session.abortTransaction()
             response.status(404)
             throw new Error('Assignment not found')
         }
 
         if (assignment.status !== 'approved') {
-            await session.abortTransaction()
             response.status(400)
             throw new Error(`The assignment you are trying to submit is not yet approved`)
         }
@@ -369,7 +367,6 @@ const submitAssignment = asyncHandler(async (request, response) => {
         // Check if student has already submitted
         const existingSubmission = await Submission.findOne({ assignment: id, student: user._id }).session(session)
         if (existingSubmission) {
-            await session.abortTransaction()
             response.status(400)
             throw new Error('You have already submitted this assignment')
         }
@@ -382,7 +379,6 @@ const submitAssignment = asyncHandler(async (request, response) => {
         if (assignment.prerequisiteLesson) {
             const completedLessons = progress.completedLessons.map(cl => cl.toString())
             if (!completedLessons.includes(assignment.prerequisiteLesson.toString())) {
-                await session.abortTransaction()
                 response.status(400)
                 throw new Error(`You must watch the prerequisite lesson before submitting this assignment`)
             }
@@ -393,11 +389,11 @@ const submitAssignment = asyncHandler(async (request, response) => {
             student: user._id,
             content: sanitizedContent
         }], { session })
+
         if (submission) {
             progress.completedAssignments.addToSet(assignment._id)
             await progress.save({ session })
         } else {
-            await session.abortTransaction()
             response.status(500)
             throw new Error(`Something went wrong while submitting assignment`)
         }
@@ -410,7 +406,7 @@ const submitAssignment = asyncHandler(async (request, response) => {
         })
     } catch (error) {
         await session.abortTransaction()
-
+        response.status(500)
         throw new Error(`Error: ${error.message}`)
     } finally {
         session.endSession()
@@ -524,16 +520,12 @@ const markSubmission = asyncHandler(async (request, response) => {
         });
 
     } catch (error) {
-        if (session) {
-            await session.abortTransaction()    // Abort transaction in case of any error
-        }
+        await session.abortTransaction()    // Abort transaction in case of any error
 
         response.status(500)
         throw new Error(`Error: ${error.message}`)
     } finally {
-        if (session) {
-            session.endSession()
-        }
+        session.endSession()
     }
 })
 
