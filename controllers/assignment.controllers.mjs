@@ -373,7 +373,7 @@ const submitAssignment = asyncHandler(async (request, response) => {
 
         let progress = await Progress.findOne({ user: user._id }).session(session)
         if (!progress) {
-            progress = new Progress({ user: user._id, completedLessons: [], completedQuizzes: [], completedAssignments: [] })
+            progress = new Progress({ user: user._id, level: user.level, completedLessons: [], completedQuizzes: [], completedAssignments: [] })
             await progress.save()
         }
         if (assignment.prerequisiteLesson) {
@@ -398,7 +398,7 @@ const submitAssignment = asyncHandler(async (request, response) => {
             throw new Error(`Something went wrong while submitting assignment`)
         }
 
-        session.commitTransaction()
+        await session.commitTransaction()
 
         response.status(201).json({
             message: 'Assignment submitted successfully',
@@ -406,10 +406,10 @@ const submitAssignment = asyncHandler(async (request, response) => {
         })
     } catch (error) {
         await session.abortTransaction()
-        response.status(500)
+
         throw new Error(`Error: ${error.message}`)
     } finally {
-        session.endSession()
+        await session.endSession()
     }
 })
 
@@ -435,7 +435,6 @@ const getAllSubmissions = asyncHandler(async (request, response) => {
     }
 
     const submissions = await Submission.find({ assignment: id })
-        // .populate('assignment', 'title question marks')
         .populate('student', 'name')
         .sort({ createdAt: -1 })
         .select("-updatedAt -__v -assignment")
@@ -465,9 +464,8 @@ const markSubmission = asyncHandler(async (request, response) => {
         throw new Error(`Invalid marks`)
     }
 
-    let session;
     // Start a session for the transaction
-    session = await mongoose.startSession()
+    const session = await mongoose.startSession()
     session.startTransaction()
     try {
 
@@ -490,18 +488,17 @@ const markSubmission = asyncHandler(async (request, response) => {
         }
 
         const oldMarks = submission.result || 0;
-        const pointDisfference = (marks - oldMarks) * 5
+        const pointsDifference = (marks - oldMarks) * 5
 
         // update progress with session
-        const progress = await Progress.findOneAndUpdate(
-            { user: submission.student },
-            { $inc: { weeklyPoints: pointDisfference } },
-            { new: true, session }
-        )
+        let progress = await Progress.findOne({ user: submission.student }).session(session)
+
         if (!progress) {
             response.status(404)
             throw new Error(`Student progress not found`)
         }
+        progress.weeklyPoints = progress.weeklyPoints += pointsDifference
+        await progress.save({ session })
 
         // Update the submission details
         submission.result = marks
@@ -522,10 +519,9 @@ const markSubmission = asyncHandler(async (request, response) => {
     } catch (error) {
         await session.abortTransaction()    // Abort transaction in case of any error
 
-        response.status(500)
         throw new Error(`Error: ${error.message}`)
     } finally {
-        session.endSession()
+        await session.endSession()
     }
 })
 
