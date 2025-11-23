@@ -8,7 +8,9 @@ import cors from "cors"
 
 const app = express()
 const port = process.env.PORT
-connectDB()
+await connectDB()
+
+import "./utils/resetWeeklyPoints.cron.mjs"
 
 app.use(cors({
   origin: 'http://localhost:5173',
