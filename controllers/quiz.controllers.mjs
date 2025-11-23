@@ -98,13 +98,10 @@ const getSingleQuiz = asyncHandler(async (request, response) => {
             throw new Error(`This quiz is not approved`)
         }
 
-        const progress = await Progress.findOne({ user: user._id })
+        let progress = await Progress.findOne({ user: user._id })
         if (!progress) {
-            const newProgress = new Progress({ user: user._id, level: user.level })
-            newProgress.save()
-
-            response.status(401)
-            throw new Error(`You must watch prerequisite lesson to start this quiz`)
+            progress = new Progress({ user: user._id, level: user.level, completedLessons: [], completedQuizzes: [], completedAssignments: [] })
+            await progress.save()
         }
         if (quiz.prerequisiteLesson && !progress.completedLessons.includes(quiz.prerequisiteLesson.toString())) {
             response.status(401)
@@ -331,76 +328,83 @@ const addQuestion = asyncHandler(async (request, response) => {
     let { question, options, answer, marks } = request.body
     const { id } = request.params
 
-    const quiz = await Quiz.findById(id)
-    if (!quiz) {
-        response.status(404)
-        throw new Error(`Quiz not found`)
-    }
-
-    if (quiz.createdBy.toString() !== user._id.toString()) {
-        response.status(403)
-        throw new Error(`Access denied. You are not the author of the quiz`)
-    }
-
-    if (quiz.status === 'approved') {
-        response.status(403)
-        throw new Error(`Cannot add question to already approved quiz`)
-    }
-
-    if (!question || !options || !answer || !marks) {
-        response.status(400)
-        throw new Error(`Input all fields`)
-    }
-    question = question.trim()
-    options = options.map(option => option.trim())
-    answer = answer.trim()
-    const questionExists = await Question.findOne({ quiz: id, question })
-    if (questionExists) {
-        response.status(400)
-        throw new Error(`This quiz already contains the same question`)
-    }
-
-    if (!Number.isInteger(marks) || marks < 0) {
-        response.status(400)
-        throw new Error(`Marks must be a non-negative integer`)
-    }
-
-    if (options.length < 2 || options.length > 5) {
-        response.status(400)
-        throw new Error(`Options must be between 2 - 5`)
-    }
-
-    if (!options.includes(answer)) {
-        response.status(400)
-        throw new Error(`answer is not included in the options`)
-    }
-
-    const newQuestion = await Question.create({ question, options, answer, marks, quiz: quiz._id })
-
-    if (!newQuestion._id) {
-        response.status(500)
-        throw new Error(`Server error: Question could not be saved`)
-    }
+    const session = await mongoose.startSession()
+    session.startTransaction()
     try {
-        quiz.questions.push(newQuestion._id)
-        quiz.totalMarks = quiz.totalMarks + marks
-        await quiz.save()
+        const quiz = await Quiz.findById(id).session(session)
+        if (!quiz) {
+            response.status(404)
+            throw new Error(`Quiz not found`)
+        }
+
+        if (quiz.createdBy.toString() !== user._id.toString()) {
+            response.status(403)
+            throw new Error(`Access denied. You are not the author of the quiz`)
+        }
+
+        if (quiz.status === 'approved') {
+            response.status(403)
+            throw new Error(`Cannot add question to already approved quiz`)
+        }
+
+        if (!question || !options || !answer || !marks) {
+            response.status(400)
+            throw new Error(`Input all fields`)
+        }
+
+        const questionExists = await Question.findOne({ quiz: id, question }).session(session)
+        if (questionExists) {
+            response.status(400)
+            throw new Error(`This quiz already contains the same question`)
+        }
+
+        question = question.trim()
+        options = options.map(option => option.trim())
+        answer = answer.trim()
+        marks = Number(marks)
+
+        if (!Number.isInteger(marks) || marks < 0) {
+            response.status(400)
+            throw new Error(`Marks must be a non-negative integer`)
+        }
+
+        if (options.length < 2 || options.length > 5) {
+            response.status(400)
+            throw new Error(`Options must be between 2 - 5`)
+        }
+
+        if (!options.includes(answer)) {
+            response.status(400)
+            throw new Error(`answer is not included in the options`)
+        }
+
+        const [newQuestion] = await Question.create([{ question, options, answer, marks, quiz: quiz._id }], { session })
+
+        // Use atomic update for quiz
+        await Quiz.findByIdAndUpdate(quiz._id, {
+            $push: { questions: newQuestion._id },
+            $inc: { totalMarks: marks }
+        }, { session })
+
+        await session.commitTransaction()
+
+        response.status(200).json({
+            message: `Question added successfully`,
+            question: newQuestion
+        })
 
     } catch (error) {
-        await Question.findByIdAndDelete(newQuestion._id)
-        response.status(500)
-        throw new Error(`Something went wrong. ${error.message}`)
-    }
+        await session.abortTransaction()
 
-    response.status(200).json({
-        message: `Question added successfully`,
-        question: newQuestion
-    })
+        throw new Error(error.message)
+    } finally {
+        await session.endSession()
+    }
 })
 
 const updateQuestion = asyncHandler(async (request, response) => {
     const user = request.user
-    const { question, options, answer, marks } = request.body
+    let { question, options, answer, marks } = request.body
     const { id } = request.params
 
     const newQuestion = await Question.findById(id)
@@ -424,6 +428,11 @@ const updateQuestion = asyncHandler(async (request, response) => {
         response.status(403)
         throw new Error(`Cannot update already approved quiz`)
     }
+
+    question = question.trim()
+    options = options.map(option => option.trim())
+    answer = answer.trim()
+    marks = Number(marks)
 
     if (!question || !options || !answer || !marks) {
         response.status(400)
@@ -458,7 +467,7 @@ const updateQuestion = asyncHandler(async (request, response) => {
 
     } catch (error) {
         response.status(500)
-        throw new Error(`Something went wrong. ${error.message}`)
+        throw new Error(`Error: ${error.message}`)
     }
 
     response.status(200).json({
@@ -471,44 +480,51 @@ const deleteQuestion = asyncHandler(async (request, response) => {
     const user = request.user
     const { id } = request.params
 
-    const question = await Question.findById(id)
-    if (!question) {
-        response.status(404)
-        throw new Error(`Question not found`)
-    }
-
-    const quiz = await Quiz.findById(question.quiz)
-    if (!quiz) {
-        response.status(404)
-        throw new Error(`The quiz, this question relates to, is not found`)
-    }
-    if (quiz.createdBy.toString() !== user._id.toString()) {
-        response.status(403)
-        throw new Error(`Access denied, You are not the author of the quiz`)
-    }
-
-    if (quiz.status === 'approved') {
-        response.status(403)
-        throw new Error(`Cannot delete question of already approved quiz`)
-    }
-
-    const deletedQuestion = await Question.findByIdAndDelete(id)
-    if (deletedQuestion === null) {
-        response.status(500)
-        throw new Error(`Question could not be deleted`)
-    }
-    quiz.totalMarks -= question.marks
-    quiz.questions = quiz.questions.filter(question => question.toString() !== id)
+    const session = await mongoose.startSession()
+    session.startTransaction()
     try {
-        await quiz.save()
-    } catch (error) {
-        response.status(500)
-        throw new Error('Failed to update totalMarks and questions array of quiz after deleting the question')
-    }
+        const question = await Question.findById(id).session(session)
+        if (!question) {
+            response.status(404)
+            throw new Error(`Question not found`)
+        }
 
-    response.status(200).json({
-        message: `Question deleted successfully`
-    })
+        const quiz = await Quiz.findById(question.quiz).session(session)
+        if (!quiz) {
+            response.status(404)
+            throw new Error(`The quiz, this question relates to, is not found`)
+        }
+        if (quiz.createdBy.toString() !== user._id.toString()) {
+            response.status(403)
+            throw new Error(`Access denied, You are not the author of the quiz`)
+        }
+
+        if (quiz.status === 'approved') {
+            response.status(403)
+            throw new Error(`Cannot delete question of already approved quiz`)
+        }
+
+        const deletedQuestion = await Question.findByIdAndDelete(id).session(session)
+        if (deletedQuestion === null) {
+            response.status(500)
+            throw new Error(`Question could not be deleted`)
+        }
+        quiz.totalMarks -= question.marks
+        quiz.questions = quiz.questions.filter(question => question.toString() !== id)
+
+        await quiz.save({ session })
+
+        await session.commitTransaction()
+        response.status(200).json({
+            message: `Question deleted successfully`
+        })
+    } catch (error) {
+        await session.abortTransaction()
+
+        throw new Error(error.message)
+    } finally {
+        await session.endSession()
+    }
 })
 
 const approveQuiz = asyncHandler(async (request, response) => {
@@ -555,92 +571,110 @@ const rejectQuiz = asyncHandler(async (request, response) => {
 
 const submitQuiz = asyncHandler(async (request, response) => {
     const user = request.user
-    const { id } = request.params           // quizId
-    const { answers } = request.body        // array of object "submittedAnswers"
+    const { id } = request.params   // quizId
+    const { answers } = request.body    // array of "submittedAnswers"
 
-    let progress = await Progress.findOne({ user: user._id }).select('completedLessons completedQuizzes permanentPoints weeklyPoints')
-
-    if (!progress) {
-        progress = new Progress({ user: user._id, level: user.level })
-        await progress.save()
-    }
-
-    if (progress.completedQuizzes.includes(id)) {
-        response.status(400)
-        throw new Error(`You have already submitted this quiz`)
-    }
-
-    const quiz = await Quiz.findById(id).populate('questions', '_id question options answer marks').lean()
-    if (!quiz) {
-        response.status(404)
-        throw new Error(`Quiz not found`)
-    }
-    if (quiz.status !== 'approved') {
-        response.status(400)
-        throw new Error('Quiz is not available')
-    }
-    if (quiz.level !== user.level) {
-        response.status(403)
-        throw new Error(`You are not authorized to submit this quiz`)
-    }
-
-    if (quiz.prerequisiteLesson) {
-        const completedLessonIds = progress.completedLessons.map(lesson => lesson.toString())
-        if (!completedLessonIds.includes(quiz.prerequisiteLesson.toString())) {
-            response.status(401)
-            throw new Error('You must watch the prerequisite lesson before submitting this quiz')
-        }
-    }
-
-    if (!Array.isArray(answers) || answers.length > quiz.questions.length) {
-        response.status(400)
-        throw new Error('Invalid answers provided')
-    }
-
-    const { questions } = quiz
-    const answersMap = new Map(answers.map(a => [a.questionId.toString(), a.selectedOption]))
-
-    let obtainedMarks = 0
-
-    const submissionObj = questions.map(question => {
-        const submittedAnswer = answersMap.get(question._id.toString())
-
-        const selectedOption = submittedAnswer ? submittedAnswer : ""
-
-        if (selectedOption && selectedOption.trim().toLowerCase() === question.answer.toLowerCase()) {
-            obtainedMarks += question.marks
-        }
-        return {
-            questionId: question._id,
-            question: question.question,
-            options: question.options,
-            selectedOption,
-            answer: question.answer,
-            marks: question.marks
-        }
-    })
+    const session = await mongoose.startSession()
+    session.startTransaction()
 
     try {
-        const submission = await QuizSubmission.create({ quiz: id, student: user._id, answers: submissionObj, totalMarks: quiz.totalMarks, obtainedMarks })
-        if (submission._id) {
-            progress.weeklyPoints += (obtainedMarks * 5)
-            progress.completedQuizzes.push(quiz._id)
-            await progress.save()
+        // 1. Get the user's progress (session data)
+        let progress = await Progress.findOne({ user: user._id }).select('completedLessons completedQuizzes permanentPoints weeklyPoints').session(session)
 
-            response.status(201).json({
-                message: `Quiz submitted successfully`,
-                success: true,
-                totalMarks: quiz.totalMarks,
-                obtainedMarks
-            })
+        if (!progress) {
+            progress = new Progress({ user: user._id, level: user.level })
+            await progress.save({ session })
         }
+
+        // 2. Check if the user has already submitted this quiz
+        if (progress.completedQuizzes.includes(id)) {
+            response.status(400)
+            throw new Error(`You have already submitted this quiz`)
+        }
+
+        // 3. Find the quiz and check its status, level, and prerequisites
+        const quiz = await Quiz.findById(id).populate('questions', '_id question options answer marks').lean().session(session)
+        if (!quiz) {
+            response.status(404)
+            throw new Error(`Quiz not found`)
+        }
+        if (quiz.status !== 'approved') {
+            response.status(400)
+            throw new Error('Quiz is not available for submission')
+        }
+        if (quiz.level !== user.level) {
+            response.status(403)
+            throw new Error(`You are not authorized to submit this quiz`)
+        }
+
+        // 4. Check if the user has completed the prerequisite lesson (if any)
+        if (quiz.prerequisiteLesson) {
+            const completedLessonIds = progress.completedLessons.map(lesson => lesson.toString())
+            if (!completedLessonIds.includes(quiz.prerequisiteLesson.toString())) {
+                response.status(401)
+                throw new Error('You must watch the prerequisite lesson before submitting this quiz')
+            }
+        }
+
+        if (!Array.isArray(answers) || answers.length !== quiz.questions.length) {
+            response.status(400)
+            throw new Error('Invalid answers provided')
+        }
+
+        // 6. Calculate obtained marks
+        const { questions } = quiz
+        const answersMap = new Map(answers.map(a => [a.questionId.toString(), a.selectedOption]))
+
+        let obtainedMarks = 0
+        const submissionObj = questions.map(question => {
+            const submittedAnswer = answersMap.get(question._id.toString())
+            const selectedOption = submittedAnswer ? submittedAnswer : ""
+
+            if (selectedOption && selectedOption.trim().toLowerCase() === question.answer.toLowerCase()) {
+                obtainedMarks += question.marks
+            }
+            return {
+                questionId: question._id,
+                question: question.question,
+                options: question.options,
+                selectedOption,
+                answer: question.answer,
+                marks: question.marks
+            }
+        })
+
+        // 7. Create the quiz submission and update the user's progressx
+        await QuizSubmission.create([{ quiz: id, student: user._id, answers: submissionObj, totalMarks: quiz.totalMarks, obtainedMarks }], { session })
+
+        // Update progress (completedQuizzes and weeklyPoints)
+        progress.weeklyPoints += (obtainedMarks * 5)
+        progress.completedQuizzes.push(quiz._id)
+        await progress.save({ session })
+
+        // Commit the transaction
+        await session.commitTransaction()
+
+        response.status(201).json({
+            message: `Quiz submitted successfully`,
+            success: true,
+            totalMarks: quiz.totalMarks,
+            obtainedMarks
+        })
+
     } catch (error) {
+        // If something fails, abort the transaction
+        await session.abortTransaction()
+
         if (error.code === 11000) {
             response.status(400)
             throw new Error(`You have already submitted this quiz`)
         }
-        response.status(500)
-        throw new Error(`Failed to submit quiz. Please try again later.`)
+
+        // Send generic failure response if error is not a duplicate
+        response.status(500);
+        throw new Error(`${error.message}`)
+    } finally {
+        await session.endSession()
     }
 })
 
