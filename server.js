@@ -12,6 +12,14 @@ await connectDB()
 
 import "./utils/resetWeeklyPoints.cron.mjs"
 
+import http from "http"
+import { initChat } from "./utils/chat.socket.mjs"
+
+const server = http.createServer(app)
+
+// initialize socket.io with the http server
+initChat(server)
+
 app.use(cors({
   origin: 'http://localhost:5173',
   credentials: true,
@@ -24,12 +32,15 @@ app.use(routes)
 app.use(errorHandler)
 
 app.get('/', (request, response) => {
-  response.status(200).json({ 
-    message: 'Server is running! Check /api or other routes for functionality.' 
+  response.status(200).json({
+    message: 'Server is running! Check /api or other routes for functionality.'
   });
 });
 
-app.listen(port, () => {
-    console.log(`server is running at port: ${port}`);
+server.listen(port, () => {
+  console.log(`server is running at port: ${port} (HTTP + WebSocket)`);
 })
-// export default app
+
+// app.listen(port, () => {
+//   console.log(`server is running at port: ${port}`);
+// })
