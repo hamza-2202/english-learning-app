@@ -111,7 +111,7 @@ const updateUser = asyncHandler(async (request, response) => {
     const password = rawPassword ? rawPassword.trim() : undefined
     const level = rawLevel ? rawLevel.trim().toLowerCase() : undefined
 
-    if(!name && !email && !role && !password && !level){
+    if (!name && !email && !role && !password && !level) {
         response.status(400)
         throw new Error(`Minimum 1 field is necessary`)
     }
@@ -238,9 +238,24 @@ const deleteUser = asyncHandler(async (request, response) => {
     })
 })
 
+const getAllStudents = asyncHandler(async (request, response) => {
+
+    const students = await User.find({ role: "student" }).sort({ createdAt: 1 }).select('name email level createdAt').lean()
+
+    if (students.length === 0) {
+        response.status(404)
+        throw new Error(`Students not found`)
+    }
+
+    response.status(200).json({
+        students
+    })
+})
+
 export {
     createUser,
     getAllUsers,
+    getAllStudents,
     getSingleUser,
     updateUser,
     deleteUser
