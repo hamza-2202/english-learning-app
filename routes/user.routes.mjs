@@ -13,7 +13,7 @@ import {
 const router = express.Router()
 
 router.route("/").get(verifyToken, roleMiddleware("admin"), getAllUsers)
-router.route("/students").get(verifyToken, roleMiddleware(["admin", "teacher"]), getAllStudents)
+router.route("/students").get(verifyToken, getAllStudents)
 router.route("/create").post(verifyToken, roleMiddleware('admin'), createUser)
 router.route("/:id").get(verifyToken, getSingleUser)
 router.route("/update/:id").put(verifyToken, roleMiddleware(['student', 'admin']), updateUser)

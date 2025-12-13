@@ -65,7 +65,7 @@ const createAnnouncement = asyncHandler(async (request, response) => {
     const title = sanitizeContent(rawTitle)
     if (title.length < 10) {     // Post-sanitization check (e.g., if all was stripped)
         response.status(400)
-        throw new Error('Invalid Title: title is too short after sanitization');
+        throw new Error('Invalid Title: title is too short after sanitization')
     }
     if (title !== rawTitle) {
         console.warn(`Title sanitized for user ${user._id}: unsafe elements detected`)    // Log for monitoring
@@ -74,7 +74,7 @@ const createAnnouncement = asyncHandler(async (request, response) => {
     const content = sanitizeContent(rawContent)
     if (content.length < 10) {     // Post-sanitization check (e.g., if all was stripped)
         response.status(400)
-        throw new Error('Invalid Content: content is too short after sanitization');
+        throw new Error('Invalid Content: content is too short after sanitization')
     }
     if (content !== rawContent) {
         console.warn(`Content sanitized for user ${user._id}: unsafe elements detected`)    // Log for monitoring
@@ -129,7 +129,7 @@ const updateAnnouncement = asyncHandler(async (request, response) => {
     const title = sanitizeContent(rawTitle)
     if (title.length < 10) {     // Post-sanitization check (e.g., if all was stripped)
         response.status(400)
-        throw new Error('Invalid Title: title is too short after sanitization');
+        throw new Error('Invalid Title: title is too short after sanitization')
     }
     if (title !== rawTitle) {
         console.warn(`Title sanitized for user ${user._id}: unsafe elements detected`)    // Log for monitoring
@@ -142,7 +142,7 @@ const updateAnnouncement = asyncHandler(async (request, response) => {
     const content = sanitizeContent(rawContent)
     if (content.length < 10) {     // Post-sanitization check (e.g., if all was stripped)
         response.status(400)
-        throw new Error('Invalid Content: content is too short after sanitization');
+        throw new Error('Invalid Content: content is too short after sanitization')
     }
     if (content !== rawContent) {
         console.warn(`Content sanitized for user ${user._id}: unsafe elements detected`)    // Log for monitoring

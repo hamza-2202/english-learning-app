@@ -8,6 +8,7 @@ import quizRoutes from "./quiz.routes.mjs"
 import announcementRoutes from "./announcement.routes.mjs"
 import progressRoutes from "./progress.routes.mjs"
 import certificateRoutes from "./certificate.routes.mjs"
+import chatRoutes from "./chat.routes.mjs"
 
 const router = express.Router()
 
@@ -20,5 +21,6 @@ router.use("/api/v1/quiz", quizRoutes)
 router.use("/api/v1/announcement", announcementRoutes)
 router.use("/api/v1", progressRoutes)   // conatains admin dashoard api as well
 router.use("/api/v1", certificateRoutes)
+router.use("/api/v1", chatRoutes)
 
 export default router;

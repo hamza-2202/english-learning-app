@@ -9,10 +9,9 @@ const purify = DOMPurify(window);
 const sanitizeContent = (dirtyHtml) => {
   return purify.sanitize(dirtyHtml, {
     ALLOWED_TAGS: [
-      'p', 'br', 'strong', 'em', 'u', 'strike', 'sub', 'sup', 'h1', 'h2',
-      'code', 'pre', 'q', 'blockquote', 'ul', 'ol', 'li', 'span', 'table', 'th', 'tr', 'td'
+      'p', 'a', 'br', 'strong', 'em', 'u', 'strike', 'sub', 'sup', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'code', 'pre', 'q', 'blockquote', 'ul', 'ol', 'li', 'span', 'table', 'th', 'tr', 'td'
     ],
-    // ALLOWED_ATTR: ['href', 'title'],
+    ALLOWED_ATTR: ['href', 'title', 'target'],
     FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input'],
     FORBID_ATTR: ['style', 'class', 'id', 'onclick', 'onload']
   })
